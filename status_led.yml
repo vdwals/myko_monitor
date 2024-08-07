@@ -1,4 +1,4 @@
-substitutions:
+defaults:
   led_gpio: GPIO14
 
 status_led:
