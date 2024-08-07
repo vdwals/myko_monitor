@@ -1,5 +1,2 @@
-defaults:
-  led_gpio: GPIO14
-
 status_led:
-  pin: ${led_gpio}
+  pin: GPIO14
