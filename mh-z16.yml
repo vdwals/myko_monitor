@@ -1,0 +1,22 @@
+uart:
+  rx_pin: ${mh_z16_rx}
+  tx_pin: ${mh_z16_tx}
+  baud_rate: 9600
+
+sensor:
+  - platform: mhz19
+    id: co2sensor
+    co2:
+      name: "MH-Z16 CO2 Value"
+    temperature:
+      name: "MH-Z16 Temperature"
+      entity_category: "diagnostic"
+    update_interval: 60s
+    automatic_baseline_calibration: false
+    warmup_time: 3min
+
+button:
+  - platform: template
+    name: "Kalibrieren"
+    on_press:
+      - mhz19.calibrate_zero: co2sensor
