@@ -3,6 +3,12 @@ deep_sleep:
   sleep_duration: ${sleep_time}
   id: deep_sleep_1
 
+globals:
+   - id: deep_sleep_switch_state
+     type: int
+     restore_value: no
+     initial_value: '0'
+
 switch:
   - platform: template
     name: "Stromsparmodus"
