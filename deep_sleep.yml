@@ -1,4 +1,4 @@
 deep_sleep:
-  run_duration: 30s
+  run_duration: 10min
   sleep_duration: 5min
   id: deep_sleep_1
