@@ -1,0 +1,13 @@
+mqtt:
+  broker: ${mqtt_host}
+  username: ${mqtt_username}
+  password: ${mqtt_password}
+  on_message:
+    - topic: mykomonitor/ota_mode
+      payload: 'ON'
+      then:
+        - deep_sleep.prevent: deep_sleep_1
+    - topic: mykomonitor/sleep_mode
+      payload: 'ON'
+      then:
+        - deep_sleep.enter: deep_sleep_1

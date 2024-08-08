@@ -1,2 +1,2 @@
 status_led:
-  pin: GPIO12
+  pin: ${status_led_pin}
