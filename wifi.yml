@@ -1,4 +1,4 @@
 wifi:
   ssid: ${wifi_ssid}
   password: ${wifi_password}
-  output_power: 15dB
+  output_power: 10dB
