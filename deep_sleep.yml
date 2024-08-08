@@ -2,3 +2,12 @@ deep_sleep:
   run_duration: ${sleep_runtime}
   sleep_duration: ${sleep_time}
   id: deep_sleep_1
+
+switch:
+  - platform: template
+    name: "Stromsparmodus"
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - deep_sleep.allow: deep_sleep_1
+    turn_off_action:
+      - deep_sleep.prevent: deep_sleep_1
