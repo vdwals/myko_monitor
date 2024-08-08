@@ -1,0 +1,12 @@
+esphome:
+  name: myko-monitor-ii-${device_name_suffix}
+  friendly_name: Myko Monitor II.${device_name_suffix}
+  project:
+    name: "vdwals.mykomonitor"
+    version: "2.0.0"
+    
+  name_add_mac_suffix: False
+  on_boot:
+    priority: -100
+    then:
+      - deep_sleep.prevent: deep_sleep_1
