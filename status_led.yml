@@ -1,2 +1,2 @@
 status_led:
-  pin: GPIO14
+  pin: GPIO16
