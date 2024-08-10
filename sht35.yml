@@ -1,3 +1,6 @@
+i2c:
+  scan: true
+
 sensor:
   - platform: sht3xd
     temperature:
