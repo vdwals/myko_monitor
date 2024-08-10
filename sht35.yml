@@ -1,5 +1,7 @@
 i2c:
-  scan: true
+  sda: GPIO5
+  scl: GPIO4
+  scan: false
 
 sensor:
   - platform: sht3xd
