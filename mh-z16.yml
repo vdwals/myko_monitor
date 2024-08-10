@@ -7,11 +7,11 @@ sensor:
   - platform: mhz19
     id: co2sensor
     co2:
-      name: "MH-Z16 CO2 Value"
+      name: "CO₂ Wert"
     temperature:
-      name: "MH-Z16 Temperature"
+      name: "CO₂-Sensor Temperatur"
       entity_category: "diagnostic"
-    update_interval: 60s
+    update_interval: ${update_interval}
     automatic_baseline_calibration: false
     warmup_time: 3min
 
