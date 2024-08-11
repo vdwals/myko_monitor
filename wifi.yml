@@ -1,5 +1,5 @@
 substitutions:
-  wifi_power: "20db"
+  wifi_power: "20.5db"
 
 wifi:
   ssid: ${wifi_ssid}
@@ -10,7 +10,7 @@ sensor:
   - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
     name: "WiFi Signal dB"
     id: wifi_signal_db
-    update_interval: 60s
+    update_interval: ${update_interval}
     entity_category: "diagnostic"
 
   - platform: copy # Reports the WiFi signal strength in %

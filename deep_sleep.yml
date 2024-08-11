@@ -22,7 +22,9 @@ switch:
       - deep_sleep.allow: deep_sleep_1
       - globals.set:
           id: deep_sleep_switch_state
-          value: '1' 
+          value: '1'
+      - delay: 1min
+      - deep_sleep.enter: deep_sleep_1
     turn_off_action:
       - deep_sleep.prevent: deep_sleep_1
       - globals.set:
