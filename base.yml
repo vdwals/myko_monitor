@@ -3,7 +3,7 @@ esphome:
   friendly_name: Myko Monitor II.${device_name_suffix}
   project:
     name: "vdwals.mykomonitor"
-    version: "2.1.5"
+    version: "2.1.6"
     
   name_add_mac_suffix: False
   on_boot:
