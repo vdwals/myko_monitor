@@ -1,6 +1,10 @@
+substitutions:
+  sda_pin: GPIO4
+  scl_pin: GPIO5
+
 i2c:
-  sda: GPIO5
-  scl: GPIO4
+  sda: ${sda_pin}
+  scl: ${scl_pin}
   scan: true
 
 sensor:
