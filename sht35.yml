@@ -1,6 +1,12 @@
 substitutions:
   sda_pin: GPIO4
   scl_pin: GPIO5
+  sht35_power_pin: GPIO14
+
+output:
+  - platform: gpio
+    pin: ${sht35_power}
+    id: sht35_power
 
 i2c:
   sda: ${sda_pin}
@@ -9,9 +15,20 @@ i2c:
 
 sensor:
   - platform: sht3xd
+    id: sht35_sensor
     temperature:
       name: "Temperatur"
+      state_class: "measurement"
     humidity:
       name: "Luftfeuchtigkeit"
+      state_class: "measurement"
     address: ${sht_35_address}
     update_interval: ${update_interval}
+
+interval:
+  - interval: ${update_interval}
+    then:
+      - output.turn_on: sht35_power   
+      - delay: 500ms
+      - component.update: sht35_sensor
+      - output.turn_off: sht35_power 
