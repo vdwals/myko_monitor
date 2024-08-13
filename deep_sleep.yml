@@ -4,29 +4,6 @@ deep_sleep:
   id: deep_sleep_1
 
 globals:
-   - id: deep_sleep_switch_state
-     type: int
-     restore_value: no
-     initial_value: '0'
-
-switch:
-  - platform: template
-    name: "Stromsparmodus"
-    lambda: |-
-      if (id(deep_sleep_switch_state) == 1) {
-        return true;
-      } else {
-        return false;
-      }
-    turn_on_action:
-      - deep_sleep.allow: deep_sleep_1
-      - globals.set:
-          id: deep_sleep_switch_state
-          value: '1'
-      - delay: 1min
-      - deep_sleep.enter: deep_sleep_1
-    turn_off_action:
-      - deep_sleep.prevent: deep_sleep_1
-      - globals.set:
-          id: deep_sleep_switch_state
-          value: '0'
+   - id: ota_mode
+    type: bool
+    initial_value: 'false'

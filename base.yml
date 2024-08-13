@@ -5,8 +5,3 @@ esphome:
     name: "vdwals.mykomonitor"
     version: "2.2.2"
   name_add_mac_suffix: False
-
-# Enable logging
-logger:
-  baud_rate: 0
-  level: INFO

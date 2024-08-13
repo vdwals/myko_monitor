@@ -1,4 +1,27 @@
+
 mqtt:
   broker: ${mqtt_host}
   username: ${mqtt_username}
   password: ${mqtt_password}
+  birth:
+  will:
+  on_message:
+    - topic: mykomonitor/ota_mode
+      payload: 'ON'
+      then:
+        - globals.set:
+            id: ota_mode
+            value: 'true'
+    - topic: mykomonitor/ota_mode
+      payload: 'OFF'
+      then:
+        - globals.set:
+            id: ota_mode
+            value: 'false'
+    - topic: mykomonitor/sensor/myko-monitor-ii-${device_name_suffix}/state
+      then:
+        - if:
+            condition:
+              lambda: 'return !id(ota_mode);'
+            then:
+              - deep_sleep.enter: deep_sleep_1

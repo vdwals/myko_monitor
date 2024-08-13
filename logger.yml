@@ -1,0 +1,10 @@
+# Log less to reduce power consumption
+# Do not log via UART
+substitutions:
+    log_baudrate: "0"
+    log_level: "INFO"
+
+# Enable logging
+logger:
+  baud_rate: ${log_baudrate}
+  level: ${log_level}

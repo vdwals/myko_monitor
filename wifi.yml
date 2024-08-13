@@ -6,11 +6,17 @@ wifi:
   password: ${wifi_password}
   output_power: ${wifi_power}
 
+  # Faster Connection, reducing required power
+  fast_connect: true
+  manual_ip:
+    static_ip: 192.168.11.65
+    gateway: 192.168.11.1
+    subnet: 255.255.255.0
+
 sensor:
   - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
     name: "WiFi Signal dB"
     id: wifi_signal_db
-    update_interval: ${update_interval}
     entity_category: "diagnostic"
 
   - platform: copy # Reports the WiFi signal strength in %
