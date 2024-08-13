@@ -5,7 +5,7 @@ substitutions:
 
 output:
   - platform: gpio
-    pin: ${sht35_power}
+    pin: ${sht35_power_pin}
     id: sht35_power
 
 i2c:
