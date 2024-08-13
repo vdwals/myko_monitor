@@ -3,10 +3,10 @@ esphome:
   friendly_name: Myko Monitor II.${device_name_suffix}
   project:
     name: "vdwals.mykomonitor"
-    version: "2.2.1"
-    
+    version: "2.2.2"
   name_add_mac_suffix: False
-  on_boot:
-    priority: -100
-    then:
-      - deep_sleep.prevent: deep_sleep_1
+
+# Enable logging
+logger:
+  baud_rate: 0
+  level: INFO
