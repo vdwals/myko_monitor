@@ -3,15 +3,15 @@ substitutions:
   scl_pin: GPIO5
   sht35_power_pin: GPIO14
 
-output:
-  - platform: gpio
-    pin: ${sht35_power_pin}
-    id: sht35_power
+#output:
+#  - platform: gpio
+#    pin: ${sht35_power_pin}
+#    id: sht35_power
 
 i2c:
   sda: ${sda_pin}
   scl: ${scl_pin}
-  scan: true
+  scan: false
 
 sensor:
   - platform: sht3xd
@@ -25,10 +25,10 @@ sensor:
     address: ${sht_35_address}
     update_interval: ${update_interval}
 
-interval:
-  - interval: ${update_interval}
-    then:
-      - output.turn_on: sht35_power   
-      - delay: 500ms
-      - component.update: sht35_sensor
-      - output.turn_off: sht35_power 
+#interval:
+#  - interval: ${update_interval}
+#    then:
+#      - output.turn_on: sht35_power   
+#      - delay: 500ms
+#      - component.update: sht35_sensor
+#      - output.turn_off: sht35_power 
