@@ -5,14 +5,3 @@ esphome:
     name: "vdwals.mykomonitor"
     version: "2.2.2"
   name_add_mac_suffix: False
-
-# Log less to reduce power consumption
-# Do not log via UART
-substitutions:
-    log_baudrate: "0"
-    log_level: "INFO"
-
-# Enable logging
-logger:
-  baud_rate: ${log_baudrate}
-  level: ${log_level}
