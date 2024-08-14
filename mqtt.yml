@@ -3,8 +3,8 @@ mqtt:
   broker: ${mqtt_host}
   username: ${mqtt_username}
   password: ${mqtt_password}
-  birth:
-  will:
+  birth_message:
+  will_message:
   on_message:
     - topic: mykomonitor/ota_mode
       payload: 'ON'
