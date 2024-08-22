@@ -13,7 +13,6 @@ sensor:
       entity_category: "diagnostic"
     update_interval: ${update_interval}
     automatic_baseline_calibration: false
-    warmup_time: 3min
 
 button:
   - platform: template
