@@ -5,21 +5,21 @@ mqtt:
   password: ${mqtt_password}
   birth_message:
   will_message:
-  topic_prefix: mykomonitor
+  topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
   on_message:
-    - topic: ota_mode
+    - topic: mykomonitor/ota_mode
       payload: 'ON'
       then:
         - globals.set:
             id: ota_mode
             value: 'true'
-    - topic: ota_mode
+    - topic: mykomonitor/ota_mode
       payload: 'OFF'
       then:
         - globals.set:
             id: ota_mode
             value: 'false'
-    - topic: myko-monitor-ii-${device_name_suffix}/sensor/state
+    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
       then:
         - if:
             condition:
