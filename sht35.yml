@@ -5,7 +5,7 @@ substitutions:
 i2c:
   sda: ${sda_pin}
   scl: ${scl_pin}
-  scan: true
+  scan: false
 
 sensor:
   - platform: sht3xd
