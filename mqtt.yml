@@ -8,23 +8,7 @@ mqtt:
   topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
   discovery_unique_id_generator: mac
   on_message:
-    - topic: mykomonitor/ota_mode
-      payload: 'ON'
-      then:
-        - globals.set:
-            id: ota_mode
-            value: 'true'
-    - topic: mykomonitor/ota_mode
-      payload: 'OFF'
-      then:
-        - globals.set:
-            id: ota_mode
-            value: 'false'
     - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
       then:
-        - if:
-            condition:
-              lambda: 'return !id(ota_mode);'
-            then:
-              - deep_sleep.enter: deep_sleep_1
+        - deep_sleep.enter: deep_sleep_1
 

@@ -1,9 +1,3 @@
 deep_sleep:
-  #run_duration: ${sleep_runtime}
   sleep_duration: ${sleep_time}
   id: deep_sleep_1
-
-globals:
-  - id: ota_mode
-    type: bool
-    initial_value: 'false'
