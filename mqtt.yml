@@ -6,6 +6,7 @@ mqtt:
   birth_message:
   will_message:
   topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
+  discovery_unique_id_generator: mac
   on_message:
     - topic: mykomonitor/ota_mode
       payload: 'ON'
@@ -25,61 +26,5 @@ mqtt:
             condition:
               lambda: 'return !id(ota_mode);'
             then:
-              - deep_sleep.enter: deep_sleep_1
-    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sensor/co____wert/state
-      # Starte, wenn der CO2-Wert gesendet wurde
-      then:
-        - globals.set:
-            id: mh_z_measured
-            value: 'true'
-        - mqtt.publish:
-            topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
-            payload: "CO₂ aktualisiert"
-        - if:
-            # Wenn beide Sensoren Werte geschickt haben, gehe schlafen.
-            condition:
-              lambda: 'return id(sht35_measured) && !id(ota_mode);'
-            then:
-              - mqtt.publish:
-                  topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
-                  payload: "Sensoren aktualisiert, starte Schlafperiode"
-              # Setze Sensorenwerte zurück
-              - globals.set:
-                  id: mh_z_measured
-                  value: 'false'
-              - globals.set:
-                  id: sht35_measured
-                  value: 'false'
-              # Schlafe
-              - deep_sleep.enter: deep_sleep_1
-    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sensor/temperatur/state
-      # Starte, wenn der Temperatur-Wert gesendet wurde
-      then:
-        - globals.set:
-            id: sht35_measured
-            value: 'true'
-        - mqtt.publish:
-            topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
-            payload: "Temperatur aktualisiert"
-        - if:
-            # Wenn beide Sensoren Werte geschickt haben, gehe schlafen.
-            condition:
-              lambda: 'return id(mh_z_measured) && !id(ota_mode);'
-            then:
-              - mqtt.publish:
-                  topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
-                  payload: "Sensoren aktualisiert, starte Schlafperiode"
-              - mqtt.publish:
-                  topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
-                  payload: !lambda |-
-                    return id(mh_z_measured) ? "true" : "false";
-              # Setze Sensorenwerte zurück
-              - globals.set:
-                  id: mh_z_measured
-                  value: 'false'
-              - globals.set:
-                  id: sht35_measured
-                  value: 'false'
-              # Schlafe
               - deep_sleep.enter: deep_sleep_1
 
