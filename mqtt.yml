@@ -69,6 +69,10 @@ mqtt:
               - mqtt.publish:
                   topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
                   payload: "Sensoren aktualisiert, starte Schlafperiode"
+              - mqtt.publish:
+                  topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
+                  payload:
+                    lambda: 'return id(mh_z_measured)'
               # Setze Sensorenwerte zurück
               - globals.set:
                   id: mh_z_measured
