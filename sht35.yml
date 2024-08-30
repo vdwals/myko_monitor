@@ -18,3 +18,8 @@ sensor:
       state_class: "measurement"
     address: ${sht_35_address}
     update_interval: ${update_interval}
+
+globals:
+  - id: sht35_measured
+    type: bool
+    initial_value: 'false'

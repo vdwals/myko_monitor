@@ -19,3 +19,8 @@ button:
     name: "Kalibrieren"
     on_press:
       - mhz19.calibrate_zero: co2sensor
+
+globals:
+  - id: mh_z_measured
+    type: bool
+    initial_value: 'false'
