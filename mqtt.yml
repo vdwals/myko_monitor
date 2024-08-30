@@ -72,7 +72,7 @@ mqtt:
               - mqtt.publish:
                   topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
                   payload: !lambda |-
-                    return id(mh_z_measured)
+                    return id(mh_z_measured) ? "true" : "false";
               # Setze Sensorenwerte zurück
               - globals.set:
                   id: mh_z_measured
