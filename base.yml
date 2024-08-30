@@ -5,3 +5,7 @@ esphome:
     name: "vdwals.mykomonitor"
     version: "2.3.2"
   name_add_mac_suffix: False
+
+packages:
+  deep_sleep: !include deep_sleep.yml
+  logger: !include logger.yml

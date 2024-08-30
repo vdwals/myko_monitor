@@ -9,8 +9,8 @@ wifi:
   # Faster Connection, reducing required power
   fast_connect: true
   manual_ip:
-    static_ip: 192.168.11.65
-    gateway: 192.168.11.1
+    static_ip: ${standard_ip}
+    gateway: ${gateway_ip}
     subnet: 255.255.255.0
 
 sensor:
@@ -26,4 +26,3 @@ sensor:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
     entity_category: "diagnostic"
-    device_class: ""
