@@ -32,6 +32,9 @@ mqtt:
         - globals.set:
             id: mh_z_measured
             value: 'true'
+        - mqtt.publish:
+            topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
+            payload: "CO₂ aktualisiert"
         - if:
             # Wenn beide Sensoren Werte geschickt haben, gehe schlafen.
             condition:
@@ -55,6 +58,9 @@ mqtt:
         - globals.set:
             id: sht35_measured
             value: 'true'
+        - mqtt.publish:
+            topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_state
+            payload: "Temperatur aktualisiert"
         - if:
             # Wenn beide Sensoren Werte geschickt haben, gehe schlafen.
             condition:
