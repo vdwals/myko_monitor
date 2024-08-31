@@ -8,6 +8,7 @@ sensor:
     id: co2sensor
     co2:
       name: "CO₂ Wert"
+      force_update: true
     temperature:
       name: "CO₂-Sensor Temperatur"
       entity_category: "diagnostic"
