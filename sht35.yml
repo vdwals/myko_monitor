@@ -13,8 +13,10 @@ sensor:
     temperature:
       name: "Temperatur"
       state_class: "measurement"
+      force_update: true
     humidity:
       name: "Luftfeuchtigkeit"
       state_class: "measurement"
+      force_update: true
     address: ${sht_35_address}
     update_interval: ${update_interval}
