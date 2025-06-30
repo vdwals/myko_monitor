@@ -1,0 +1,14 @@
+
+mqtt:
+  broker: ${mqtt_host}
+  username: ${mqtt_username}
+  password: ${mqtt_password}
+  birth_message:
+  will_message:
+  topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
+  discovery_unique_id_generator: mac
+  on_message:
+    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
+      then:
+        - deep_sleep.enter: deep_sleep_1
+

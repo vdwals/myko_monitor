@@ -1,0 +1,16 @@
+esphome:
+  name: myko-monitor-ii-${device_name_suffix}
+  friendly_name: Myko Monitor II.${device_name_suffix}
+  project:
+    name: "vdwals.mykomonitor"
+    version: "2.4.0"
+  name_add_mac_suffix: False
+
+packages:
+  deep_sleep: !include deep_sleep.yml
+  mh_z16: !include mh-z16.yml
+  sht35: !include sht35.yml
+  status_led: !include status_led.yml
+  wifi: !include wifi.yml
+  mqtt: !include mqtt.yml
+  logger: !include logger.yml

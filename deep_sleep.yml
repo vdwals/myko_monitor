@@ -1,0 +1,3 @@
+deep_sleep:
+  sleep_duration: ${sleep_time}
+  id: deep_sleep_1

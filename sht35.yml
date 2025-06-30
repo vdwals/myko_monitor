@@ -1,0 +1,22 @@
+substitutions:
+  sda_pin: GPIO4
+  scl_pin: GPIO5
+
+i2c:
+  sda: ${sda_pin}
+  scl: ${scl_pin}
+  scan: false
+
+sensor:
+  - platform: sht3xd
+    id: sht35_sensor
+    temperature:
+      name: "Temperatur"
+      state_class: "measurement"
+      force_update: true
+    humidity:
+      name: "Luftfeuchtigkeit"
+      state_class: "measurement"
+      force_update: true
+    address: ${sht_35_address}
+    update_interval: ${update_interval}
