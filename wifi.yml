@@ -1,28 +1,39 @@
+# WiFi Configuration with Power Optimization
+# Modular WiFi setup with static IP and connection monitoring
+# Optimized for battery-powered operation
+
 substitutions:
-  wifi_power: "20.5db"
+  wifi_power: "20.5dB"  # WiFi transmission power level
 
+# WiFi network configuration
 wifi:
-  ssid: ${wifi_ssid}
-  password: ${wifi_password}
-  output_power: ${wifi_power}
+  ssid: ${wifi_ssid}      # Network name from substitutions
+  password: ${wifi_password}  # Network password from substitutions
+  output_power: ${wifi_power}  # Reduce power consumption with lower TX power
 
-  # Faster Connection, reducing required power
-  fast_connect: true
+  # Performance optimizations for faster connection
+  fast_connect: true  # Skip scanning, connect to known network immediately
+  
+  # Static IP configuration to avoid DHCP delays
   manual_ip:
-    static_ip: ${standard_ip}
-    gateway: ${gateway_ip}
-    subnet: 255.255.255.0
+    static_ip: ${standard_ip}  # Fixed IP address from substitutions
+    gateway: ${gateway_ip}     # Gateway IP from substitutions
+    subnet: 255.255.255.0     # Standard subnet mask
 
+# WiFi diagnostics and monitoring sensors
 sensor:
-  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+  # Raw WiFi signal strength in decibels
+  - platform: wifi_signal
     name: "WiFi Signal dB"
     id: wifi_signal_db
-    entity_category: "diagnostic"
+    entity_category: "diagnostic"  # Mark as diagnostic in Home Assistant
 
-  - platform: copy # Reports the WiFi signal strength in %
+  # User-friendly percentage representation of signal strength
+  - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
     filters:
+      # Convert dB to percentage: -30dB = 100%, -100dB = 0%
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
     entity_category: "diagnostic"

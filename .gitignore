@@ -1,0 +1,20 @@
+# ESPHome Secrets and Build Files
+secrets.yaml
+.esphome/
+*.bin
+*.elf
+
+# Development Files
+.vscode/settings.json
+.devcontainer
+*.log
+*.tmp
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Backup Files
+*.bak
+*.backup
+*~

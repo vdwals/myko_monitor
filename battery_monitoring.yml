@@ -1,0 +1,241 @@
+# Battery Monitoring Configuration for Mark II Devices
+# Monitors battery voltage, estimates remaining capacity, and manages low-power alerts
+# Essential for battery-powered outdoor deployments
+
+substitutions:
+  # ADC pin for battery voltage measurement (voltage divider circuit)
+  battery_pin: "A0"
+  
+  # Voltage divider calculation factors
+  # Adjust these based on your voltage divider resistor values
+  # For 3.3V max ADC with 4.2V max battery: use 2:1 voltage divider
+  voltage_divider_factor: "2.0"
+  
+  # Battery voltage thresholds
+  battery_full_voltage: "4.1"      # 100% charge level
+  battery_empty_voltage: "3.2"     # 0% charge level (protect from over-discharge)
+  battery_low_voltage: "3.4"       # Low battery warning threshold
+  battery_critical_voltage: "3.3"  # Critical battery shutdown threshold
+
+# ADC configuration for battery voltage reading
+sensor:
+  # Raw ADC reading from battery voltage divider
+  - platform: adc
+    pin: ${battery_pin}
+    name: "Battery Voltage Raw"
+    id: battery_voltage_raw
+    update_interval: 60s
+    accuracy_decimals: 3
+    entity_category: "diagnostic"
+    internal: true  # Hide raw value from Home Assistant
+    filters:
+      # Convert ADC reading to actual battery voltage
+      - multiply: ${voltage_divider_factor}
+      - calibrate_linear:
+          # Calibration points - adjust based on multimeter measurements
+          - 0.0 -> 0.0
+          - 1.0 -> 1.0
+  
+  # Filtered battery voltage for stable readings
+  - platform: copy
+    source_id: battery_voltage_raw
+    name: "Battery Voltage"
+    id: battery_voltage
+    unit_of_measurement: "V"
+    device_class: "voltage"
+    state_class: "measurement"
+    accuracy_decimals: 2
+    filters:
+      # Moving average filter to smooth voltage readings
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 1
+    on_value:
+      - lambda: |-
+          // Log battery voltage for diagnostics
+          ESP_LOGI("battery", "Battery voltage: %.2fV", x);
+          
+          // Update last reading timestamp for health monitoring
+          id(last_battery_reading_time) = millis() / 1000;
+  
+  # Battery percentage calculation
+  - platform: copy
+    source_id: battery_voltage
+    name: "Battery Level"
+    id: battery_percentage
+    unit_of_measurement: "%"
+    device_class: "battery"
+    state_class: "measurement"
+    accuracy_decimals: 0
+    filters:
+      # Convert voltage to percentage (linear approximation)
+      - calibrate_linear:
+          - ${battery_empty_voltage} -> 0
+          - ${battery_full_voltage} -> 100
+      # Clamp values to 0-100% range
+      - lambda: return max(0.0f, min(100.0f, x));
+  
+  # Battery power consumption estimate (when awake)
+  - platform: template
+    name: "Power Consumption"
+    id: power_consumption
+    unit_of_measurement: "mA"
+    device_class: "current"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 5min
+    accuracy_decimals: 1
+    lambda: |-
+      // Estimate current consumption based on active components
+      float current_ma = 0.0;
+      
+      // Base ESP8266 consumption
+      current_ma += 80.0;  // ~80mA when WiFi active
+      
+      // Add sensor consumption
+      current_ma += 20.0;  // MH-Z16 CO2 sensor
+      current_ma += 1.5;   // SHT35 sensor
+      
+      // Add WiFi transmission overhead
+      if (wifi::global_wifi_component->is_connected()) {
+        current_ma += 170.0;  // Peak transmission current
+      }
+      
+      return current_ma;
+  
+  # Estimated battery life remaining
+  - platform: template
+    name: "Battery Life Remaining"
+    id: battery_life_remaining
+    unit_of_measurement: "h"
+    device_class: "duration"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 10min
+    accuracy_decimals: 1
+    lambda: |-
+      float battery_percent = id(battery_percentage).state;
+      float current_ma = id(power_consumption).state;
+      
+      if (current_ma <= 0 || battery_percent <= 0) return 0;
+      
+      // Assume 2500mAh battery capacity (adjust for your battery)
+      float battery_capacity_mah = 2500.0;
+      float remaining_capacity = (battery_percent / 100.0) * battery_capacity_mah;
+      
+      // Calculate hours remaining (with 20% safety margin)
+      float hours_remaining = (remaining_capacity * 0.8) / current_ma;
+      
+      return max(0.0f, hours_remaining);
+
+# Global variables for battery monitoring
+globals:
+  # Last battery reading timestamp for health checks
+  - id: last_battery_reading_time
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  # Low battery alert state
+  - id: low_battery_alert_sent
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+
+# Binary sensors for battery alerts
+binary_sensor:
+  # Low battery warning
+  - platform: template
+    name: "Low Battery Warning"
+    id: low_battery_warning
+    device_class: "battery_low"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(battery_voltage).state < ${battery_low_voltage};
+  
+  # Critical battery alert
+  - platform: template
+    name: "Critical Battery Alert"
+    id: critical_battery_alert
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(battery_voltage).state < ${battery_critical_voltage};
+    on_press:
+      - lambda: |-
+          ESP_LOGW("battery", "Critical battery level detected!");
+          // Force deep sleep to preserve remaining power
+          id(deep_sleep_1).set_sleep_duration(3600000);  // 1 hour sleep
+          id(deep_sleep_1).begin_sleep();
+  
+  # Battery charging status (if charge controller connected)
+  - platform: template
+    name: "Battery Charging"
+    id: battery_charging
+    device_class: "battery_charging"
+    entity_category: "diagnostic"
+    lambda: |-
+      // Simple heuristic: if voltage is rising, assume charging
+      static float last_voltage = 0;
+      float current_voltage = id(battery_voltage).state;
+      bool charging = current_voltage > last_voltage + 0.05;  // 50mV increase
+      last_voltage = current_voltage;
+      return charging;
+
+# Automation for battery management
+interval:
+  # Battery health check every 10 minutes
+  - interval: 10min
+    then:
+      - lambda: |-
+          float voltage = id(battery_voltage).state;
+          float percentage = id(battery_percentage).state;
+          
+          // Log battery status
+          ESP_LOGI("battery", "Battery: %.2fV (%.0f%%)", voltage, percentage);
+          
+          // Send low battery alert (once per power cycle)
+          if (voltage < ${battery_low_voltage} && !id(low_battery_alert_sent)) {
+            ESP_LOGW("battery", "Low battery alert triggered");
+            id(low_battery_alert_sent) = true;
+          }
+          
+          // Reset alert flag when battery recovers
+          if (voltage > ${battery_low_voltage} + 0.1) {  // 100mV hysteresis
+            id(low_battery_alert_sent) = false;
+          }
+          
+          // Automatic power saving when battery low
+          if (percentage < 20) {
+            ESP_LOGI("battery", "Battery low, extending sleep duration");
+            // Double the sleep time to conserve power
+            id(deep_sleep_1).set_sleep_duration(
+              id(deep_sleep_1).get_sleep_duration() * 2
+            );
+          }
+
+# MQTT messages for battery alerts
+mqtt:
+  on_connect:
+    - lambda: |-
+        // Publish battery status on connect
+        float voltage = id(battery_voltage).state;
+        float percentage = id(battery_percentage).state;
+        
+        std::string topic = "mykomonitor/myko-monitor-ii-${device_name_suffix}/battery/status";
+        std::string payload = "{\"voltage\":" + to_string(voltage) + 
+                             ",\"percentage\":" + to_string(percentage) + "}";
+        
+        id(mqtt_client).publish(topic, payload);
+
+# Button for battery calibration
+button:
+  # Battery calibration button (use when battery is known to be full)
+  - platform: template
+    name: "Calibrate Battery Full"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          float current_voltage = id(battery_voltage_raw).state;
+          ESP_LOGI("battery", "Battery calibration: Full charge at %.2fV", current_voltage);
+          // Could store calibration values in global variables or EEPROM

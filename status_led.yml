@@ -1,2 +1,6 @@
+# Status LED Configuration
+# Provides visual indication of device status and connectivity
+# LED behavior: solid = normal operation, blinking = issues
+
 status_led:
-  pin: ${status_led_pin}
+  pin: ${status_led_pin}  # GPIO pin for status LED from substitutions

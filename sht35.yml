@@ -1,22 +1,28 @@
-substitutions:
-  sda_pin: GPIO4
-  scl_pin: GPIO5
+# SHT35 Temperature and Humidity Sensor Configuration
+# High-precision climate monitoring via I2C communication
+# Default GPIO pins for ESP8266/ESP32 I2C interface
 
+substitutions:
+  sda_pin: GPIO4  # I2C data line (SDA)
+  scl_pin: GPIO5  # I2C clock line (SCL)
+
+# I2C bus configuration
 i2c:
   sda: ${sda_pin}
   scl: ${scl_pin}
-  scan: false
+  scan: false  # Disable I2C scanning to reduce startup time
 
 sensor:
+  # SHT3xD platform supports SHT30, SHT31, SHT35 sensors
   - platform: sht3xd
     id: sht35_sensor
     temperature:
-      name: "Temperatur"
-      state_class: "measurement"
-      force_update: true
+      name: "Temperatur"  # German: "Temperature"
+      state_class: "measurement"  # Home Assistant state class for statistics
+      force_update: true  # Always send updates for accurate trending
     humidity:
-      name: "Luftfeuchtigkeit"
-      state_class: "measurement"
-      force_update: true
-    address: ${sht_35_address}
-    update_interval: ${update_interval}
+      name: "Luftfeuchtigkeit"  # German: "Humidity"
+      state_class: "measurement"  # Home Assistant state class for statistics
+      force_update: true  # Always send updates for accurate trending
+    address: ${sht_35_address}  # I2C address (typically 0x44 or 0x45)
+    update_interval: ${update_interval}  # Configurable measurement frequency

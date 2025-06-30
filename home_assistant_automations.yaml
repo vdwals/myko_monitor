@@ -1,0 +1,325 @@
+# Home Assistant Automations for Myko Monitor
+# Copy these automations to your Home Assistant configuration
+# File location: config/automations.yaml (or include in configuration.yaml)
+
+# ==============================================================================
+# SLEEP MANAGEMENT AUTOMATIONS
+# ==============================================================================
+
+# Primary sleep control - triggers when sensors are ready
+- id: myko_monitor_sleep_control
+  alias: "Myko Monitor - Sleep When Ready"
+  description: "Automatically trigger deep sleep when all sensors have completed readings"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sleep_ready"
+      payload: "true"
+  condition:
+    # Only trigger during normal operation hours (optional)
+    - condition: time
+      after: "00:00:00"
+      before: "23:59:59"
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ trigger.topic.split('/')[1] }}/command/sleep"
+        payload: "sleep"
+        retain: false
+    - service: logbook.log
+      data:
+        name: "Myko Monitor"
+        message: "Device {{ trigger.topic.split('/')[1] }} ready for sleep - sleep command sent"
+  mode: parallel  # Allow multiple devices
+  max: 10
+
+# Emergency sleep trigger for low battery
+- id: myko_monitor_emergency_sleep
+  alias: "Myko Monitor - Emergency Sleep (Low Battery)"
+  description: "Force sleep immediately when battery is critically low"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sensor/low_battery/state"
+      payload: "ON"
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ trigger.topic.split('/')[1] }}/command/force_sleep"
+        payload: "force_sleep"
+        retain: false
+    - service: persistent_notification.create
+      data:
+        title: "Myko Monitor - Low Battery"
+        message: "Device {{ trigger.topic.split('/')[1] }} has low battery - forced sleep activated"
+        notification_id: "myko_low_battery_{{ trigger.topic.split('/')[1] }}"
+  mode: parallel
+  max: 10
+
+# Timeout protection - force sleep if device stays awake too long
+- id: myko_monitor_timeout_sleep
+  alias: "Myko Monitor - Timeout Sleep Protection"
+  description: "Force sleep if device stays awake longer than expected"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sensor/wake_duration/state"
+  condition:
+    - condition: template
+      value_template: "{{ trigger.payload | float > 300 }}"  # 5 minutes
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ trigger.topic.split('/')[1] }}/command/force_sleep"
+        payload: "timeout"
+        retain: false
+    - service: system_log.write
+      data:
+        message: "Myko Monitor {{ trigger.topic.split('/')[1] }} wake timeout - forcing sleep"
+        level: warning
+  mode: parallel
+  max: 10
+
+# ==============================================================================
+# SENSOR MONITORING AUTOMATIONS
+# ==============================================================================
+
+# High CO2 alert
+- id: myko_monitor_high_co2
+  alias: "Myko Monitor - High CO2 Alert"
+  description: "Send notification when CO2 levels are too high"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sensor/co2_wert/state"
+  condition:
+    - condition: template
+      value_template: "{{ trigger.payload | float > 1500 }}"  # Adjust threshold as needed
+  action:
+    - service: notify.mobile_app_your_phone  # Replace with your notification service
+      data:
+        title: "High CO2 Alert"
+        message: "CO2 level in {{ trigger.topic.split('/')[1] }} is {{ trigger.payload }}ppm"
+        data:
+          priority: high
+    - service: logbook.log
+      data:
+        name: "Myko Monitor"
+        message: "High CO2 detected: {{ trigger.payload }}ppm in {{ trigger.topic.split('/')[1] }}"
+  mode: parallel
+  max: 10
+
+# Sensor failure alert
+- id: myko_monitor_sensor_failure
+  alias: "Myko Monitor - Sensor Failure Alert"
+  description: "Alert when sensors fail or report invalid readings"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/binary_sensor/sensor_failed/state"
+      payload: "ON"
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "Myko Monitor - Sensor Failure"
+        message: "Sensor failure detected on device {{ trigger.topic.split('/')[1] }}"
+        notification_id: "myko_sensor_failure_{{ trigger.topic.split('/')[1] }}"
+    - service: notify.mobile_app_your_phone  # Replace with your notification service
+      data:
+        title: "Sensor Failure"
+        message: "Device {{ trigger.topic.split('/')[1] }} has sensor failures"
+  mode: parallel
+  max: 10
+
+# Device health monitoring
+- id: myko_monitor_health_check
+  alias: "Myko Monitor - Health Check Alert"
+  description: "Monitor overall device health and alert on degradation"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sensor/system_health/state"
+  condition:
+    - condition: template
+      value_template: "{{ trigger.payload | float < 70 }}"  # Health below 70%
+  action:
+    - service: persistent_notification.create
+      data:
+        title: "Myko Monitor - Health Alert"
+        message: "Device {{ trigger.topic.split('/')[1] }} health is {{ trigger.payload }}%"
+        notification_id: "myko_health_{{ trigger.topic.split('/')[1] }}"
+  mode: parallel
+  max: 10
+
+# ==============================================================================
+# CALIBRATION REMINDERS
+# ==============================================================================
+
+# CO2 calibration reminder
+- id: myko_monitor_calibration_reminder
+  alias: "Myko Monitor - Calibration Reminder"
+  description: "Remind to calibrate CO2 sensors periodically"
+  trigger:
+    - platform: time
+      at: "09:00:00"  # Daily check at 9 AM
+  condition:
+    - condition: template
+      value_template: >
+        {% set devices = states.sensor 
+           | selectattr('entity_id', 'match', 'sensor..*myko.*co2.*') 
+           | list %}
+        {{ devices | length > 0 }}
+  action:
+    - service: calendar.create_event  # If you have calendar integration
+      data:
+        entity_id: calendar.maintenance
+        summary: "Myko Monitor CO2 Calibration Due"
+        description: "Check if CO2 sensors need calibration (outdoor fresh air)"
+        start_date_time: "{{ now().strftime('%Y-%m-%d') }}T10:00:00"
+        end_date_time: "{{ now().strftime('%Y-%m-%d') }}T10:30:00"
+  mode: single
+
+# ==============================================================================
+# BATTERY MANAGEMENT AUTOMATIONS
+# ==============================================================================
+
+# Battery level monitoring and sleep duration adjustment
+- id: myko_monitor_battery_management
+  alias: "Myko Monitor - Battery Level Management"
+  description: "Adjust sleep duration based on battery level"
+  trigger:
+    - platform: mqtt
+      topic: "mykomonitor/myko-monitor-ii-+/sensor/battery_voltage/state"
+  variables:
+    device_topic: "mykomonitor/myko-monitor-ii-{{ trigger.topic.split('/')[1] }}"
+    battery_voltage: "{{ trigger.payload | float }}"
+  action:
+    - choose:
+        # Battery very low (< 3.4V) - extend sleep to 2 hours
+        - conditions:
+            - condition: template
+              value_template: "{{ battery_voltage < 3.4 }}"
+          sequence:
+            - service: mqtt.publish
+              data:
+                topic: "{{ device_topic }}/command/set_sleep_duration"
+                payload: "7200"  # 2 hours in seconds
+        # Battery low (< 3.6V) - extend sleep to 1 hour
+        - conditions:
+            - condition: template
+              value_template: "{{ battery_voltage < 3.6 }}"
+          sequence:
+            - service: mqtt.publish
+              data:
+                topic: "{{ device_topic }}/command/set_sleep_duration"
+                payload: "3600"  # 1 hour in seconds
+        # Battery normal (> 3.8V) - normal 30 minute sleep
+        - conditions:
+            - condition: template
+              value_template: "{{ battery_voltage > 3.8 }}"
+          sequence:
+            - service: mqtt.publish
+              data:
+                topic: "{{ device_topic }}/command/set_sleep_duration"
+                payload: "1800"  # 30 minutes in seconds
+  mode: parallel
+  max: 10
+
+# ==============================================================================
+# MANUAL CONTROLS
+# ==============================================================================
+
+# Manual sleep trigger (for testing or maintenance)
+- id: myko_monitor_manual_sleep
+  alias: "Myko Monitor - Manual Sleep Trigger"
+  description: "Manually trigger sleep for specific device"
+  trigger:
+    - platform: event
+      event_type: call_service
+      event_data:
+        domain: script
+        service: myko_monitor_sleep
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ trigger.event.data.service_data.device }}/command/sleep"
+        payload: "manual"
+  mode: parallel
+
+# Manual calibration trigger
+- id: myko_monitor_manual_calibration
+  alias: "Myko Monitor - Manual Calibration"
+  description: "Trigger CO2 calibration remotely"
+  trigger:
+    - platform: event
+      event_type: call_service
+      event_data:
+        domain: script
+        service: myko_monitor_calibrate
+  action:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ trigger.event.data.service_data.device }}/button/kalibrieren/command"
+        payload: "PRESS"
+  mode: parallel
+
+# ==============================================================================
+# SUPPORTING SCRIPTS (Add to scripts.yaml)
+# ==============================================================================
+
+# Script to manually sleep a specific device
+myko_monitor_sleep:
+  alias: "Sleep Myko Monitor Device"
+  description: "Manually trigger sleep for a specific Myko Monitor device"
+  fields:
+    device:
+      description: "Device name suffix (e.g., greenhouse-01)"
+      example: "greenhouse-01"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ device }}/command/force_sleep"
+        payload: "manual"
+
+# Script to calibrate CO2 sensor
+myko_monitor_calibrate:
+  alias: "Calibrate Myko Monitor CO2 Sensor"
+  description: "Trigger CO2 calibration (use in fresh air only)"
+  fields:
+    device:
+      description: "Device name suffix (e.g., greenhouse-01)"
+      example: "greenhouse-01"
+  sequence:
+    - service: mqtt.publish
+      data:
+        topic: "mykomonitor/myko-monitor-ii-{{ device }}/button/kalibrieren/command"
+        payload: "PRESS"
+
+# ==============================================================================
+# EXAMPLE DASHBOARD CARDS (Add to Lovelace UI)
+# ==============================================================================
+
+# Example entities card for device monitoring:
+# type: entities
+# title: Myko Monitor - Greenhouse 01
+# entities:
+#   - entity: sensor.myko_monitor_ii_greenhouse_01_co2_wert
+#     name: CO2 Level
+#   - entity: sensor.myko_monitor_ii_greenhouse_01_temperatur
+#     name: Temperature
+#   - entity: sensor.myko_monitor_ii_greenhouse_01_luftfeuchtigkeit
+#     name: Humidity
+#   - entity: sensor.myko_monitor_ii_greenhouse_01_battery_voltage
+#     name: Battery
+#   - entity: sensor.myko_monitor_ii_greenhouse_01_system_health
+#     name: Health
+#   - entity: binary_sensor.myko_monitor_ii_greenhouse_01_low_battery
+#     name: Low Battery
+#   - entity: button.myko_monitor_ii_greenhouse_01_kalibrieren
+#     name: Calibrate CO2
+
+# Example gauge card for CO2 levels:
+# type: gauge
+# entity: sensor.myko_monitor_ii_greenhouse_01_co2_wert
+# name: CO2 Level
+# unit: ppm
+# min: 300
+# max: 2000
+# severity:
+#   green: 0
+#   yellow: 1000
+#   red: 1500

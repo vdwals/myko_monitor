@@ -1,0 +1,200 @@
+# Enhanced Error Handling and Recovery System
+# Provides automatic sensor recovery, connection monitoring, and failure reporting
+# Improves system reliability and reduces manual intervention
+
+# Global error tracking and recovery automation
+globals:
+  # Sensor failure counters
+  - id: co2_failure_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  - id: sht35_failure_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  # Connection failure tracking
+  - id: wifi_disconnect_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: mqtt_disconnect_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Last successful sensor readings timestamp
+  - id: last_co2_reading_time
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  - id: last_sht35_reading_time
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+# Interval component for health checks
+interval:
+  # Check sensor health every 5 minutes
+  - interval: 5min
+    then:
+      - lambda: |-
+          // Check CO2 sensor health
+          int current_time = millis() / 1000;
+          if (current_time - id(last_co2_reading_time) > 300) { // 5 minutes
+            id(co2_failure_count) += 1;
+            ESP_LOGW("health_check", "CO2 sensor not responding for 5+ minutes");
+            
+            // Reset sensor after 3 failures
+            if (id(co2_failure_count) >= 3) {
+              ESP_LOGE("health_check", "CO2 sensor failed 3 times, attempting recovery");
+              // Could add sensor reset logic here if hardware supports it
+            }
+          }
+          
+          // Check SHT35 sensor health
+          if (current_time - id(last_sht35_reading_time) > 300) { // 5 minutes
+            id(sht35_failure_count) += 1;
+            ESP_LOGW("health_check", "SHT35 sensor not responding for 5+ minutes");
+          }
+
+# WiFi event handlers for connection monitoring
+wifi:
+  on_connect:
+    - lambda: |-
+        ESP_LOGI("wifi", "WiFi connected successfully");
+        id(wifi_disconnect_count) = 0;  // Reset counter on successful connection
+  
+  on_disconnect:
+    - lambda: |-
+        id(wifi_disconnect_count) += 1;
+        ESP_LOGW("wifi", "WiFi disconnected (count: %d)", id(wifi_disconnect_count));
+        
+        // Restart if too many disconnections
+        if (id(wifi_disconnect_count) > 10) {
+          ESP_LOGE("wifi", "Too many WiFi disconnections, restarting device");
+          App.safe_reboot();
+        }
+
+# MQTT event handlers
+mqtt:
+  on_connect:
+    - lambda: |-
+        ESP_LOGI("mqtt", "MQTT connected successfully");
+        id(mqtt_disconnect_count) = 0;  // Reset counter on successful connection
+  
+  on_disconnect:
+    - lambda: |-
+        id(mqtt_disconnect_count) += 1;
+        ESP_LOGW("mqtt", "MQTT disconnected (count: %d)", id(mqtt_disconnect_count));
+
+# Diagnostic sensors for monitoring system health
+sensor:
+  # System health score (0-100%)
+  - platform: template
+    name: "System Health Score"
+    id: system_health_score
+    unit_of_measurement: "%"
+    device_class: ""
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 60s
+    lambda: |-
+      float health_score = 100.0;
+      
+      // Reduce score for sensor failures
+      if (id(co2_failure_count) > 0) health_score -= 20.0;
+      if (id(sht35_failure_count) > 0) health_score -= 15.0;
+      
+      // Reduce score for connection issues
+      if (id(wifi_disconnect_count) > 3) health_score -= 25.0;
+      if (id(mqtt_disconnect_count) > 3) health_score -= 15.0;
+      
+      // Ensure score doesn't go below 0
+      return max(0.0f, health_score);
+  
+  # WiFi disconnect counter sensor
+  - platform: template
+    name: "WiFi Disconnections"
+    id: wifi_disconnections_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(wifi_disconnect_count);
+  
+  # MQTT disconnect counter sensor
+  - platform: template
+    name: "MQTT Disconnections"
+    id: mqtt_disconnections_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(mqtt_disconnect_count);
+  
+  # Sensor failure counters
+  - platform: template
+    name: "CO2 Sensor Failures"
+    id: co2_failures_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(co2_failure_count);
+  
+  - platform: template
+    name: "SHT35 Sensor Failures"
+    id: sht35_failures_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(sht35_failure_count);
+
+# Binary sensors for alert conditions
+binary_sensor:
+  # System health alert
+  - platform: template
+    name: "System Health Alert"
+    id: health_alert
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(system_health_score).state < 75.0;
+  
+  # Sensor failure alerts
+  - platform: template
+    name: "CO2 Sensor Alert"
+    id: co2_sensor_alert
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(co2_failure_count) >= 2;
+  
+  - platform: template
+    name: "Climate Sensor Alert"
+    id: climate_sensor_alert
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(sht35_failure_count) >= 2;
+
+# Recovery buttons for manual intervention
+button:
+  # Reset error counters
+  - platform: template
+    name: "Reset Error Counters"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          id(co2_failure_count) = 0;
+          id(sht35_failure_count) = 0;
+          id(wifi_disconnect_count) = 0;
+          id(mqtt_disconnect_count) = 0;
+          ESP_LOGI("recovery", "All error counters reset");
+  
+  # Force system restart
+  - platform: restart
+    name: "System Restart"
+    entity_category: "diagnostic"

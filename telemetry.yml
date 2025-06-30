@@ -1,0 +1,421 @@
+# Enhanced Telemetry and System Monitoring
+# Comprehensive device monitoring including uptime, memory, performance metrics
+# Provides insights into device health and operational efficiency
+
+# Global variables for telemetry tracking
+globals:
+  # Boot and uptime tracking
+  - id: boot_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: last_boot_time
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Connection statistics
+  - id: wifi_connect_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: mqtt_connect_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Data transmission statistics
+  - id: total_sensor_readings
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: failed_transmissions
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Performance metrics
+  - id: max_loop_time_ms
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  - id: deep_sleep_cycles
+    type: int
+    restore_value: true
+    initial_value: '0'
+
+# System telemetry sensors
+sensor:
+  # Device uptime in human-readable format
+  - platform: uptime
+    name: "Uptime"
+    id: uptime_sensor
+    update_interval: 60s
+    entity_category: "diagnostic"
+  
+  # Uptime in seconds for calculations
+  - platform: template
+    name: "Uptime Seconds"
+    id: uptime_seconds
+    unit_of_measurement: "s"
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    update_interval: 60s
+    accuracy_decimals: 0
+    lambda: |-
+      return millis() / 1000.0;
+  
+  # Boot counter
+  - platform: template
+    name: "Boot Count"
+    id: boot_count_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(boot_count);
+  
+  # Free heap memory
+  - platform: template
+    name: "Free Memory"
+    id: free_memory
+    unit_of_measurement: "bytes"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 30s
+    lambda: |-
+      return ESP.getFreeHeap();
+  
+  # Heap fragmentation percentage
+  - platform: template
+    name: "Memory Fragmentation"
+    id: memory_fragmentation
+    unit_of_measurement: "%"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 60s
+    accuracy_decimals: 1
+    lambda: |-
+      uint32_t free = ESP.getFreeHeap();
+      uint32_t max_block = ESP.getMaxFreeBlockSize();
+      if (free == 0) return 0;
+      return (1.0 - (float)max_block / (float)free) * 100.0;
+  
+  # CPU load approximation (based on loop time)
+  - platform: template
+    name: "CPU Load"
+    id: cpu_load
+    unit_of_measurement: "%"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 30s
+    accuracy_decimals: 1
+    lambda: |-
+      // Simple CPU load estimation based on loop time
+      static unsigned long last_time = 0;
+      static unsigned long loop_count = 0;
+      static unsigned long total_loop_time = 0;
+      
+      unsigned long current_time = millis();
+      if (last_time == 0) last_time = current_time;
+      
+      loop_count++;
+      total_loop_time += (current_time - last_time);
+      
+      if (loop_count >= 100) {  // Calculate every 100 loops
+        float avg_loop_time = total_loop_time / (float)loop_count;
+        float cpu_usage = min(100.0f, avg_loop_time * 10.0f);  // Rough approximation
+        
+        // Reset counters
+        loop_count = 0;
+        total_loop_time = 0;
+        last_time = current_time;
+        
+        return cpu_usage;
+      }
+      
+      last_time = current_time;
+      return 0;  // Return 0 until we have enough samples
+  
+  # Maximum loop time (performance monitoring)
+  - platform: template
+    name: "Max Loop Time"
+    id: max_loop_time
+    unit_of_measurement: "ms"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 60s
+    lambda: |-
+      int max_time = id(max_loop_time_ms);
+      id(max_loop_time_ms) = 0;  // Reset after reading
+      return max_time;
+  
+  # WiFi connection count
+  - platform: template
+    name: "WiFi Connections"
+    id: wifi_connections
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(wifi_connect_count);
+  
+  # MQTT connection count
+  - platform: template
+    name: "MQTT Connections"
+    id: mqtt_connections
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(mqtt_connect_count);
+  
+  # Total sensor readings transmitted
+  - platform: template
+    name: "Total Sensor Readings"
+    id: total_readings
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(total_sensor_readings);
+  
+  # Failed transmission count
+  - platform: template
+    name: "Failed Transmissions"
+    id: failed_transmissions_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(failed_transmissions);
+  
+  # Transmission success rate
+  - platform: template
+    name: "Transmission Success Rate"
+    id: transmission_success_rate
+    unit_of_measurement: "%"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    accuracy_decimals: 1
+    lambda: |-
+      int total = id(total_sensor_readings);
+      int failed = id(failed_transmissions);
+      
+      if (total == 0) return 100.0;
+      return ((float)(total - failed) / (float)total) * 100.0;
+  
+  # Deep sleep cycle count
+  - platform: template
+    name: "Deep Sleep Cycles"
+    id: deep_sleep_cycles_sensor
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(deep_sleep_cycles);
+  
+  # Average time between deep sleep cycles
+  - platform: template
+    name: "Avg Wake Duration"
+    id: avg_wake_duration
+    unit_of_measurement: "min"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 5min
+    accuracy_decimals: 1
+    lambda: |-
+      int cycles = id(deep_sleep_cycles);
+      if (cycles == 0) return 0;
+      
+      float uptime_hours = (millis() / 1000.0) / 3600.0;
+      return (uptime_hours * 60.0) / cycles;  // Convert to minutes per cycle
+  
+  # Reset reason (why device last booted)
+  - platform: template
+    name: "Reset Reason"
+    id: reset_reason_sensor
+    entity_category: "diagnostic"
+    lambda: |-
+      return ESP.getResetReason().c_str();
+
+# Binary sensors for system status
+binary_sensor:
+  # Low memory warning
+  - platform: template
+    name: "Low Memory Warning"
+    id: low_memory_warning
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(free_memory).state < 8192;  // Warn if less than 8KB free
+  
+  # High memory fragmentation
+  - platform: template
+    name: "High Memory Fragmentation"
+    id: high_fragmentation
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(memory_fragmentation).state > 50.0;  // Warn if >50% fragmented
+  
+  # High CPU load
+  - platform: template
+    name: "High CPU Load"
+    id: high_cpu_load
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(cpu_load).state > 80.0;  // Warn if >80% CPU usage
+  
+  # System stability indicator
+  - platform: template
+    name: "System Stable"
+    id: system_stable
+    device_class: "running"
+    entity_category: "diagnostic"
+    lambda: |-
+      // Consider system stable if:
+      // - Uptime > 1 hour
+      // - Memory > 4KB free
+      // - CPU load < 90%
+      // - Transmission success rate > 90%
+      return (id(uptime_seconds).state > 3600) &&
+             (id(free_memory).state > 4096) &&
+             (id(cpu_load).state < 90.0) &&
+             (id(transmission_success_rate).state > 90.0);
+
+# Performance monitoring intervals
+interval:
+  # Track loop performance every 10 seconds
+  - interval: 10s
+    then:
+      - lambda: |-
+          static unsigned long last_loop_time = 0;
+          unsigned long current_time = millis();
+          
+          if (last_loop_time > 0) {
+            unsigned long loop_time = current_time - last_loop_time;
+            if (loop_time > id(max_loop_time_ms)) {
+              id(max_loop_time_ms) = loop_time;
+            }
+          }
+          last_loop_time = current_time;
+  
+  # System health report every hour
+  - interval: 1h
+    then:
+      - lambda: |-
+          ESP_LOGI("telemetry", "=== System Health Report ===");
+          ESP_LOGI("telemetry", "Uptime: %.0f seconds", id(uptime_seconds).state);
+          ESP_LOGI("telemetry", "Free Memory: %.0f bytes", id(free_memory).state);
+          ESP_LOGI("telemetry", "Memory Fragmentation: %.1f%%", id(memory_fragmentation).state);
+          ESP_LOGI("telemetry", "WiFi Connections: %d", id(wifi_connect_count));
+          ESP_LOGI("telemetry", "MQTT Connections: %d", id(mqtt_connect_count));
+          ESP_LOGI("telemetry", "Total Readings: %d", id(total_sensor_readings));
+          ESP_LOGI("telemetry", "Failed Transmissions: %d", id(failed_transmissions));
+          ESP_LOGI("telemetry", "Success Rate: %.1f%%", id(transmission_success_rate).state);
+
+# Boot initialization
+on_boot:
+  priority: -100  # Run after other components
+  then:
+    - lambda: |-
+        id(boot_count) += 1;
+        id(last_boot_time) = millis() / 1000;
+        ESP_LOGI("telemetry", "Boot #%d completed", id(boot_count));
+        ESP_LOGI("telemetry", "Reset reason: %s", ESP.getResetReason().c_str());
+
+# Event handlers for connection tracking
+wifi:
+  on_connect:
+    - lambda: |-
+        id(wifi_connect_count) += 1;
+        ESP_LOGI("telemetry", "WiFi connection #%d established", id(wifi_connect_count));
+
+mqtt:
+  on_connect:
+    - lambda: |-
+        id(mqtt_connect_count) += 1;
+        ESP_LOGI("telemetry", "MQTT connection #%d established", id(mqtt_connect_count));
+
+# Deep sleep tracking
+deep_sleep:
+  on_shutdown:
+    - lambda: |-
+        id(deep_sleep_cycles) += 1;
+        ESP_LOGI("telemetry", "Entering deep sleep cycle #%d", id(deep_sleep_cycles));
+
+# Text sensors for additional system information
+text_sensor:
+  # Device compile time
+  - platform: template
+    name: "Compile Time"
+    id: compile_time
+    entity_category: "diagnostic"
+    lambda: |-
+      return {"__DATE__ __TIME__"};
+  
+  # ESPHome version
+  - platform: version
+    name: "ESPHome Version"
+    entity_category: "diagnostic"
+  
+  # Device MAC address
+  - platform: wifi_info
+    mac_address:
+      name: "MAC Address"
+      entity_category: "diagnostic"
+  
+  # Current IP address
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: "diagnostic"
+
+# Button for telemetry management
+button:
+  # Reset telemetry counters
+  - platform: template
+    name: "Reset Telemetry"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          id(wifi_connect_count) = 0;
+          id(mqtt_connect_count) = 0;
+          id(total_sensor_readings) = 0;
+          id(failed_transmissions) = 0;
+          id(deep_sleep_cycles) = 0;
+          id(max_loop_time_ms) = 0;
+          ESP_LOGI("telemetry", "Telemetry counters reset");
+  
+  # Generate telemetry report
+  - platform: template
+    name: "Generate Telemetry Report"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          ESP_LOGI("report", "=== COMPREHENSIVE TELEMETRY REPORT ===");
+          ESP_LOGI("report", "Device Information:");
+          ESP_LOGI("report", "  Boot Count: %d", id(boot_count));
+          ESP_LOGI("report", "  Uptime: %.0f seconds", id(uptime_seconds).state);
+          ESP_LOGI("report", "  Reset Reason: %s", ESP.getResetReason().c_str());
+          ESP_LOGI("report", "");
+          ESP_LOGI("report", "Memory Status:");
+          ESP_LOGI("report", "  Free Heap: %.0f bytes", id(free_memory).state);
+          ESP_LOGI("report", "  Fragmentation: %.1f%%", id(memory_fragmentation).state);
+          ESP_LOGI("report", "");
+          ESP_LOGI("report", "Performance Metrics:");
+          ESP_LOGI("report", "  CPU Load: %.1f%%", id(cpu_load).state);
+          ESP_LOGI("report", "  Max Loop Time: %d ms", id(max_loop_time_ms));
+          ESP_LOGI("report", "");
+          ESP_LOGI("report", "Connectivity:");
+          ESP_LOGI("report", "  WiFi Connections: %d", id(wifi_connect_count));
+          ESP_LOGI("report", "  MQTT Connections: %d", id(mqtt_connect_count));
+          ESP_LOGI("report", "");
+          ESP_LOGI("report", "Data Transmission:");
+          ESP_LOGI("report", "  Total Readings: %d", id(total_sensor_readings));
+          ESP_LOGI("report", "  Failed Transmissions: %d", id(failed_transmissions));
+          ESP_LOGI("report", "  Success Rate: %.1f%%", id(transmission_success_rate).state);
+          ESP_LOGI("report", "");
+          ESP_LOGI("report", "Power Management:");
+          ESP_LOGI("report", "  Deep Sleep Cycles: %d", id(deep_sleep_cycles));
+          ESP_LOGI("report", "  Avg Wake Duration: %.1f min", id(avg_wake_duration).state);

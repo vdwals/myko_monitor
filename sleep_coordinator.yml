@@ -1,0 +1,183 @@
+# Sleep Coordinator for Home Assistant Integration
+# Ensures sensors complete readings before Home Assistant triggers sleep
+# Coordinates with HA automation for optimal battery life
+
+# Global variables for sleep coordination
+globals:
+  # Sensor reading completion tracking
+  - id: co2_reading_complete
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  
+  - id: sht35_reading_complete
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  
+  # Sleep readiness flag
+  - id: sleep_ready
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  
+  # Wake timestamp for timeout protection
+  - id: wake_timestamp
+    type: int
+    restore_value: false
+    initial_value: '0'
+
+# Binary sensor to signal Home Assistant when ready for sleep
+binary_sensor:
+  # Sleep ready signal for Home Assistant automation
+  - platform: template
+    name: "Sleep Ready"
+    id: sleep_ready_signal
+    device_class: "running"
+    lambda: |-
+      return id(sleep_ready);
+    on_press:
+      # When sleep becomes ready, publish MQTT message for HA
+      - mqtt.publish:
+          topic: "mykomonitor/myko-monitor-ii-${device_name_suffix}/sleep_ready"
+          payload: "true"
+          retain: false
+
+# Sensor completion tracking
+# These automations monitor when sensors complete their readings
+automation:
+  # CO2 sensor completion
+  - id: co2_sensor_complete
+    trigger:
+      - platform: sensor
+        sensor_id: co2sensor
+        on_value:
+          then:
+            - lambda: |-
+                id(co2_reading_complete) = true;
+                ESP_LOGI("sleep_coord", "CO2 sensor reading complete");
+                id(check_sleep_readiness).execute();
+  
+  # SHT35 sensor completion (if available)
+  - id: sht35_sensor_complete
+    trigger:
+      - platform: sensor
+        sensor_id: sht35_sensor
+        on_value:
+          then:
+            - lambda: |-
+                id(sht35_reading_complete) = true;
+                ESP_LOGI("sleep_coord", "SHT35 sensor reading complete");
+                id(check_sleep_readiness).execute();
+  
+  # Check if all sensors are ready for sleep
+  - id: check_sleep_readiness
+    then:
+      - lambda: |-
+          bool all_sensors_ready = id(co2_reading_complete);
+          
+          // Check SHT35 only if it exists in this configuration
+          #ifdef USE_SHT3XD
+          all_sensors_ready = all_sensors_ready && id(sht35_reading_complete);
+          #endif
+          
+          if (all_sensors_ready && !id(sleep_ready)) {
+            ESP_LOGI("sleep_coord", "All sensors complete - signaling sleep ready");
+            id(sleep_ready) = true;
+            id(sleep_ready_signal).publish_state(true);
+          }
+
+# Wake cycle initialization
+on_boot:
+  priority: 600  # Run early in boot sequence
+  then:
+    - lambda: |-
+        // Initialize wake cycle
+        id(wake_timestamp) = millis() / 1000;
+        id(co2_reading_complete) = false;
+        id(sht35_reading_complete) = false;
+        id(sleep_ready) = false;
+        
+        ESP_LOGI("sleep_coord", "Wake cycle started - waiting for sensor readings");
+
+# Safety timeout to prevent infinite wake
+interval:
+  # Force sleep readiness after maximum wake time (5 minutes)
+  - interval: 5min
+    then:
+      - lambda: |-
+          if (!id(sleep_ready)) {
+            ESP_LOGW("sleep_coord", "Wake timeout - forcing sleep ready signal");
+            id(sleep_ready) = true;
+            id(sleep_ready_signal).publish_state(true);
+          }
+
+# MQTT sleep command handler with coordination
+mqtt:
+  on_message:
+    # Enhanced sleep command with readiness check
+    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
+      then:
+        - lambda: |-
+            ESP_LOGI("sleep_coord", "Sleep command received from Home Assistant");
+            
+            // Check if sensors are ready
+            if (id(sleep_ready)) {
+              ESP_LOGI("sleep_coord", "Sensors ready - entering deep sleep immediately");
+              id(deep_sleep_1).begin_sleep();
+            } else {
+              ESP_LOGW("sleep_coord", "Sensors not ready - waiting 30s then forcing sleep");
+              // Wait briefly for sensors, then force sleep
+            }
+    
+    # Immediate forced sleep command (emergency)
+    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/force_sleep
+      then:
+        - lambda: |-
+            ESP_LOGW("sleep_coord", "Forced sleep command - entering deep sleep immediately");
+            id(deep_sleep_1).begin_sleep();
+
+# Status reporting for Home Assistant integration
+sensor:
+  # Wake duration for monitoring
+  - platform: template
+    name: "Wake Duration"
+    id: wake_duration
+    unit_of_measurement: "s"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 30s
+    lambda: |-
+      return (millis() / 1000) - id(wake_timestamp);
+  
+  # Sensors completion status
+  - platform: template
+    name: "Sensors Ready"
+    id: sensors_ready_count
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 15s
+    lambda: |-
+      int ready_count = 0;
+      if (id(co2_reading_complete)) ready_count++;
+      #ifdef USE_SHT3XD
+      if (id(sht35_reading_complete)) ready_count++;
+      return ready_count;
+      #else
+      return ready_count;
+      #endif
+
+# Home Assistant automation example (for documentation)
+# Add this to your Home Assistant automations.yaml:
+#
+# - alias: "Myko Monitor Sleep Control"
+#   trigger:
+#     - platform: mqtt
+#       topic: "mykomonitor/myko-monitor-ii-+/sleep_ready"
+#       payload: "true"
+#   action:
+#     - service: mqtt.publish
+#       data:
+#         topic: "mykomonitor/myko-monitor-ii-{{ trigger.topic.split('/')[1] }}/command/sleep"
+#         payload: "sleep"
+#   mode: single

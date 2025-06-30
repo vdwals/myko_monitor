@@ -1,22 +1,30 @@
+# MH-Z16/MH-Z19 CO₂ Sensor Configuration
+# Modular component for CO₂ measurement via UART communication
+# Uses substitutions for flexible GPIO pin assignment
+
+# UART configuration for sensor communication
 uart:
-  rx_pin: ${mh_z16_rx}
-  tx_pin: ${mh_z16_tx}
-  baud_rate: 9600
+  rx_pin: ${mh_z16_rx}  # Connect to sensor TX pin
+  tx_pin: ${mh_z16_tx}  # Connect to sensor RX pin
+  baud_rate: 9600       # Standard communication speed for MH-Z series
 
 sensor:
+  # MH-Z19 platform supports both MH-Z16 and MH-Z19 sensors
   - platform: mhz19
     id: co2sensor
     co2:
-      name: "CO₂ Wert"
-      force_update: true
+      name: "CO₂ Wert"  # German: "CO₂ Value"
+      force_update: true  # Always send updates even if value unchanged
     temperature:
-      name: "CO₂-Sensor Temperatur"
-      entity_category: "diagnostic"
-    update_interval: ${update_interval}
-    automatic_baseline_calibration: false
+      name: "CO₂-Sensor Temperatur"  # German: "CO₂ Sensor Temperature"
+      entity_category: "diagnostic"  # Mark as diagnostic in Home Assistant
+    update_interval: ${update_interval}  # Configurable update frequency
+    automatic_baseline_calibration: false  # Manual calibration for accuracy
 
+# Calibration control button
 button:
   - platform: template
-    name: "Kalibrieren"
+    name: "Kalibrieren"  # German: "Calibrate"
+    # Zero-point calibration - use in fresh air (400ppm CO₂)
     on_press:
       - mhz19.calibrate_zero: co2sensor

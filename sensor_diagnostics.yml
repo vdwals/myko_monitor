@@ -1,0 +1,310 @@
+# Sensor Health Monitoring and Diagnostics
+# Advanced diagnostics for CO2 and climate sensors
+# Provides sensor validation, drift detection, and maintenance alerts
+
+# Global variables for sensor health tracking
+globals:
+  # Sensor reading validation
+  - id: co2_out_of_range_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  - id: temp_out_of_range_count
+    type: int
+    restore_value: false
+    initial_value: '0'
+  
+  # Baseline tracking for drift detection
+  - id: co2_baseline_ppm
+    type: float
+    restore_value: true
+    initial_value: '400.0'  # Outdoor CO2 baseline
+  
+  - id: temp_baseline_c
+    type: float
+    restore_value: true
+    initial_value: '20.0'   # Room temperature baseline
+  
+  # Sensor age tracking (days since first boot)
+  - id: sensor_age_days
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Last calibration timestamp
+  - id: last_co2_calibration
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  # Reading stability tracking
+  - id: co2_reading_variance
+    type: float
+    restore_value: false
+    initial_value: '0.0'
+
+# Diagnostic sensors for sensor health assessment
+sensor:
+  # CO2 sensor health score (0-100%)
+  - platform: template
+    name: "CO2 Sensor Health"
+    id: co2_sensor_health
+    unit_of_measurement: "%"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 5min
+    accuracy_decimals: 0
+    lambda: |-
+      float health_score = 100.0;
+      
+      // Reduce score for out-of-range readings
+      if (id(co2_out_of_range_count) > 5) health_score -= 20.0;
+      
+      // Reduce score for sensor age (degrade after 1 year)
+      int age_days = id(sensor_age_days);
+      if (age_days > 365) {
+        health_score -= min(30.0f, (age_days - 365) * 0.1f);
+      }
+      
+      // Reduce score if calibration is overdue (> 6 months)
+      int current_time = millis() / 1000;
+      int last_cal = id(last_co2_calibration);
+      if (last_cal > 0 && (current_time - last_cal) > 15552000) { // 6 months
+        health_score -= 25.0;
+      }
+      
+      // Reduce score for high reading variance (unstable sensor)
+      float variance = id(co2_reading_variance);
+      if (variance > 50.0) health_score -= 15.0;
+      
+      return max(0.0f, health_score);
+  
+  # Temperature sensor health score
+  - platform: template
+    name: "Temperature Sensor Health"
+    id: temp_sensor_health
+    unit_of_measurement: "%"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 5min
+    accuracy_decimals: 0
+    lambda: |-
+      float health_score = 100.0;
+      
+      // Reduce score for out-of-range readings
+      if (id(temp_out_of_range_count) > 3) health_score -= 20.0;
+      
+      // SHT35 sensors are generally very stable, minimal age degradation
+      int age_days = id(sensor_age_days);
+      if (age_days > 730) { // 2 years
+        health_score -= min(15.0f, (age_days - 730) * 0.02f);
+      }
+      
+      return max(0.0f, health_score);
+  
+  # CO2 reading stability (variance over last 10 readings)
+  - platform: template
+    name: "CO2 Reading Stability"
+    id: co2_stability
+    unit_of_measurement: "ppm"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 10min
+    accuracy_decimals: 1
+    lambda: |-
+      // Calculate and return the stored variance
+      return id(co2_reading_variance);
+  
+  # Days since last CO2 calibration
+  - platform: template
+    name: "Days Since CO2 Calibration"
+    id: days_since_calibration
+    unit_of_measurement: "days"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 1h
+    accuracy_decimals: 0
+    lambda: |-
+      int last_cal = id(last_co2_calibration);
+      if (last_cal == 0) return -1;  // Never calibrated
+      
+      int current_time = millis() / 1000;
+      return (current_time - last_cal) / 86400;  // Convert seconds to days
+  
+  # Sensor age in days
+  - platform: template
+    name: "Sensor Age"
+    id: sensor_age_sensor
+    unit_of_measurement: "days"
+    state_class: "total_increasing"
+    entity_category: "diagnostic"
+    update_interval: 1h
+    accuracy_decimals: 0
+    lambda: |-
+      return id(sensor_age_days);
+  
+  # CO2 drift from baseline
+  - platform: template
+    name: "CO2 Baseline Drift"
+    id: co2_baseline_drift
+    unit_of_measurement: "ppm"
+    state_class: "measurement"
+    entity_category: "diagnostic"
+    update_interval: 1h
+    accuracy_decimals: 0
+    lambda: |-
+      // Calculate drift from expected outdoor baseline
+      // This sensor only updates when CO2 is available
+      if (id(co2sensor).has_state()) {
+        float current_co2 = id(co2sensor).state;
+        return current_co2 - id(co2_baseline_ppm);
+      }
+      return 0;
+
+# Binary sensors for maintenance alerts
+binary_sensor:
+  # CO2 sensor needs calibration
+  - platform: template
+    name: "CO2 Calibration Due"
+    id: co2_calibration_due
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      int current_time = millis() / 1000;
+      int last_cal = id(last_co2_calibration);
+      
+      // Alert if never calibrated or > 6 months since last calibration
+      return (last_cal == 0) || ((current_time - last_cal) > 15552000);
+  
+  # CO2 sensor health alert
+  - platform: template
+    name: "CO2 Sensor Degraded"
+    id: co2_sensor_degraded
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(co2_sensor_health).state < 70.0;
+  
+  # Temperature sensor health alert
+  - platform: template
+    name: "Temperature Sensor Degraded"
+    id: temp_sensor_degraded
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(temp_sensor_health).state < 80.0;
+  
+  # Sensor readings unstable
+  - platform: template
+    name: "Unstable Sensor Readings"
+    id: unstable_readings
+    device_class: "problem"
+    entity_category: "diagnostic"
+    lambda: |-
+      return id(co2_reading_variance) > 100.0;  // High variance indicates instability
+
+# Enhanced sensor validation with diagnostics
+# This augments the existing sensor configurations
+sensor:
+  # CO2 sensor with validation (add to existing mh-z16.yml)
+  - platform: template
+    name: "CO2 Validated"
+    id: co2_validated
+    unit_of_measurement: "ppm"
+    device_class: "carbon_dioxide"
+    state_class: "measurement"
+    accuracy_decimals: 0
+    lambda: |-
+      // Get raw CO2 reading from main sensor
+      if (!id(co2sensor).has_state()) return {};
+      
+      float co2_value = id(co2sensor).state;
+      
+      // Validate CO2 reading range (outdoor: 400-450, indoor: 450-5000)
+      if (co2_value < 350 || co2_value > 6000) {
+        id(co2_out_of_range_count) += 1;
+        ESP_LOGW("validation", "CO2 reading out of range: %.0f ppm", co2_value);
+        return {};  // Return invalid state
+      } else {
+        id(co2_out_of_range_count) = max(0, id(co2_out_of_range_count) - 1);
+      }
+      
+      // Update variance calculation (simple running variance)
+      static float co2_readings[10] = {0};
+      static int reading_index = 0;
+      static bool buffer_full = false;
+      
+      co2_readings[reading_index] = co2_value;
+      reading_index = (reading_index + 1) % 10;
+      if (reading_index == 0) buffer_full = true;
+      
+      if (buffer_full) {
+        // Calculate variance
+        float mean = 0;
+        for (int i = 0; i < 10; i++) mean += co2_readings[i];
+        mean /= 10;
+        
+        float variance = 0;
+        for (int i = 0; i < 10; i++) {
+          variance += pow(co2_readings[i] - mean, 2);
+        }
+        id(co2_reading_variance) = sqrt(variance / 10);
+      }
+      
+      return co2_value;
+
+# Interval tasks for maintenance tracking
+interval:
+  # Update sensor age daily
+  - interval: 24h
+    then:
+      - lambda: |-
+          id(sensor_age_days) += 1;
+          ESP_LOGI("diagnostics", "Sensor age: %d days", id(sensor_age_days));
+  
+  # Weekly sensor health report
+  - interval: 168h  # 7 days
+    then:
+      - lambda: |-
+          float co2_health = id(co2_sensor_health).state;
+          float temp_health = id(temp_sensor_health).state;
+          int age = id(sensor_age_days);
+          
+          ESP_LOGI("health_report", "Weekly Health Report:");
+          ESP_LOGI("health_report", "  CO2 Sensor Health: %.0f%%", co2_health);
+          ESP_LOGI("health_report", "  Temperature Sensor Health: %.0f%%", temp_health);
+          ESP_LOGI("health_report", "  Sensor Age: %d days", age);
+          ESP_LOGI("health_report", "  CO2 Reading Stability: %.1f ppm", id(co2_reading_variance));
+
+# Maintenance and calibration buttons
+button:
+  # Record CO2 calibration timestamp
+  - platform: template
+    name: "Record CO2 Calibration"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          id(last_co2_calibration) = millis() / 1000;
+          ESP_LOGI("calibration", "CO2 calibration timestamp recorded");
+  
+  # Reset sensor health counters
+  - platform: template
+    name: "Reset Health Counters"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          id(co2_out_of_range_count) = 0;
+          id(temp_out_of_range_count) = 0;
+          id(co2_reading_variance) = 0.0;
+          ESP_LOGI("diagnostics", "Sensor health counters reset");
+  
+  # Factory reset sensor age (for sensor replacement)
+  - platform: template
+    name: "Reset Sensor Age"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          id(sensor_age_days) = 0;
+          id(last_co2_calibration) = 0;
+          ESP_LOGI("diagnostics", "Sensor age reset - new sensor installed");

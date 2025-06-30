@@ -1,10 +1,12 @@
-# Log less to reduce power consumption
-# Do not log via UART
-substitutions:
-    log_baudrate: "0"
-    log_level: "INFO"
+# Logging Configuration for Power-Aware Operation
+# Optimized logging settings to reduce power consumption
+# UART logging disabled to free pins for sensor communication
 
-# Enable logging
+substitutions:
+    log_baudrate: "0"     # Disable UART logging (0 = no serial output)
+    log_level: "INFO"     # Log level: DEBUG, INFO, WARN, ERROR
+
+# Logger component configuration
 logger:
-  baud_rate: ${log_baudrate}
-  level: ${log_level}
+  baud_rate: ${log_baudrate}  # Serial baud rate (0 = disabled)
+  level: ${log_level}         # Minimum log level to output

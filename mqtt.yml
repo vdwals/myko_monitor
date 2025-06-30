@@ -1,14 +1,26 @@
+# MQTT Configuration for Data Transmission and Remote Control
+# Handles sensor data publishing and remote command reception
+# Integrates with Home Assistant via MQTT discovery
 
 mqtt:
-  broker: ${mqtt_host}
-  username: ${mqtt_username}
-  password: ${mqtt_password}
-  birth_message:
-  will_message:
+  broker: ${mqtt_host}        # MQTT broker address from substitutions
+  username: ${mqtt_username}  # MQTT authentication username
+  password: ${mqtt_password}  # MQTT authentication password
+  
+  # Device lifecycle messages
+  birth_message:  # Message sent when device comes online
+  will_message:   # Message sent when device goes offline unexpectedly
+  
+  # Topic structure for organized data publishing
   topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
+  
+  # Use MAC address for unique device identification in Home Assistant
   discovery_unique_id_generator: mac
+  
+  # Remote command handling
   on_message:
+    # Sleep command for remote power management
     - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
       then:
-        - deep_sleep.enter: deep_sleep_1
+        - deep_sleep.enter: deep_sleep_1  # Trigger deep sleep mode
 

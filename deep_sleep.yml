@@ -1,3 +1,7 @@
+# Deep Sleep Configuration for Battery Power Management
+# Enables ultra-low power operation by putting ESP into sleep mode
+# Wake triggers: timer-based or external interrupts
+
 deep_sleep:
-  sleep_duration: ${sleep_time}
-  id: deep_sleep_1
+  sleep_duration: ${sleep_time}  # Sleep duration from substitutions (e.g., 30min)
+  id: deep_sleep_1              # Unique identifier for deep sleep component
