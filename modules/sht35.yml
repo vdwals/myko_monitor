@@ -15,12 +15,14 @@ i2c:
 sensor:
   # SHT3xD platform supports SHT30, SHT31, SHT35 sensors
   - platform: sht3xd
-    id: sht35_sensor
+    id: sht35_component
     temperature:
+      id: sht35_temp_sensor
       name: "Temperatur"  # German: "Temperature"
       state_class: "measurement"  # Home Assistant state class for statistics
       force_update: true  # Always send updates for accurate trending
     humidity:
+      id: sht35_humidity_sensor
       name: "Luftfeuchtigkeit"  # German: "Humidity"
       state_class: "measurement"  # Home Assistant state class for statistics
       force_update: true  # Always send updates for accurate trending

@@ -228,14 +228,6 @@ sensor:
       
       float uptime_hours = (millis() / 1000.0) / 3600.0;
       return (uptime_hours * 60.0) / cycles;  // Convert to minutes per cycle
-  
-  # Reset reason (why device last booted)
-  - platform: template
-    name: "Reset Reason"
-    id: reset_reason_sensor
-    entity_category: "diagnostic"
-    lambda: |-
-      return ESP.getResetReason().c_str();
 
 # Binary sensors for system status
 binary_sensor:
@@ -340,6 +332,14 @@ mqtt:
 
 # Text sensors for additional system information
 text_sensor:
+  # Reset reason (why device last booted)
+  - platform: template
+    name: "Reset Reason"
+    id: reset_reason_sensor
+    entity_category: "diagnostic"
+    lambda: |-
+      return {ESP.getResetReason().c_str()};
+
   # Device compile time
   - platform: template
     name: "Compile Time"

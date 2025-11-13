@@ -39,9 +39,10 @@ script:
       - lambda: |-
           // Check if sensors have state (readings available)
           bool co2_ready = id(co2sensor).has_state();
-          bool sht35_ready = id(sht35_sensor).has_state();
+          bool temp_ready = id(sht35_temp_sensor).has_state();
+          bool humidity_ready = id(sht35_humidity_sensor).has_state();
 
-          bool all_sensors_ready = co2_ready && sht35_ready;
+          bool all_sensors_ready = co2_ready && temp_ready && humidity_ready;
 
           if (all_sensors_ready && !id(sleep_ready)) {
             ESP_LOGI("sleep_coord", "All sensors complete - signaling sleep ready");
@@ -127,7 +128,8 @@ sensor:
     lambda: |-
       int ready_count = 0;
       if (id(co2sensor).has_state()) ready_count++;
-      if (id(sht35_sensor).has_state()) ready_count++;
+      if (id(sht35_temp_sensor).has_state()) ready_count++;
+      if (id(sht35_humidity_sensor).has_state()) ready_count++;
       return ready_count;
 
 # Home Assistant automation example (for documentation)

@@ -29,12 +29,16 @@ script:
       - lambda: |-
           std::string sleep_time = "${sleep_time}";
           if (sleep_time == "0" || sleep_time == "0s" || sleep_time == "0min") {
-            ESP_LOGI("deep_sleep", "Sleep time is 0 - preventing deep sleep mode");
+            ESP_LOGI("deep_sleep", "Sleep time is 0 - deep sleep disabled");
             id(prevent_deep_sleep) = true;
-            id(deep_sleep_1).prevent();
           } else {
             ESP_LOGI("deep_sleep", "Deep sleep enabled with duration: %s", sleep_time.c_str());
           }
+      - if:
+          condition:
+            lambda: 'return id(prevent_deep_sleep);'
+          then:
+            - deep_sleep.prevent: deep_sleep_1
 
 # Execute sleep mode check on boot
 esphome:

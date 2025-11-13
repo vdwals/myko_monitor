@@ -36,7 +36,8 @@
 
 				// Documentation
 				"yzhang.markdown-all-in-one",
-				"davidanson.vscode-markdownlint"
+				"davidanson.vscode-markdownlint",
+				"Anthropic.claude-code"
 			],
 			"settings": {
 				"files.associations": {

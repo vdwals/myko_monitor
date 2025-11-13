@@ -11,8 +11,9 @@ uart:
 sensor:
   # MH-Z19 platform supports both MH-Z16 and MH-Z19 sensors
   - platform: mhz19
-    id: co2sensor
+    id: co2sensor_component
     co2:
+      id: co2sensor
       name: "CO₂ Wert"  # German: "CO₂ Value"
       force_update: true  # Always send updates even if value unchanged
     temperature:
@@ -27,4 +28,4 @@ button:
     name: "Kalibrieren"  # German: "Calibrate"
     # Zero-point calibration - use in fresh air (400ppm CO₂)
     on_press:
-      - mhz19.calibrate_zero: co2sensor
+      - mhz19.calibrate_zero: co2sensor_component
