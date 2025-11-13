@@ -7,7 +7,7 @@ esphome:
   name_add_mac_suffix: False
 
 packages:
-  deep_sleep: !include deep_sleep.yml
+  #deep_sleep: !include deep_sleep.yml
   mh_z16: !include mh-z16.yml
   sht35: !include sht35.yml
   status_led: !include status_led.yml
