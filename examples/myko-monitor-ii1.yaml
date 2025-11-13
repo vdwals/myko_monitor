@@ -1,0 +1,16 @@
+# Device-Specific Configuration for Myko Monitor Device #1
+# This file customizes the ESP8266 base configuration for a specific device
+#
+# Usage:
+#   esphome compile myko-monitor-ii1.yaml
+#   esphome upload myko-monitor-ii1.yaml
+
+# Device-specific substitutions
+# These override the defaults from myko-monitor-ii.esp8266.yml
+substitutions:
+  device_name_suffix: "1"         # Unique device identifier
+  standard_ip: 192.168.1.210      # Static IP address for this device
+
+# Include the ESP8266 base configuration
+packages:
+  device_base: !include myko-monitor-ii.esp8266.yml

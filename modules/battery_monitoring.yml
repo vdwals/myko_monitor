@@ -148,7 +148,7 @@ binary_sensor:
   - platform: template
     name: "Low Battery Warning"
     id: low_battery_warning
-    device_class: "battery_low"
+    device_class: "problem"
     entity_category: "diagnostic"
     lambda: |-
       return id(battery_voltage).state < ${battery_low_voltage};
@@ -219,14 +219,10 @@ mqtt:
   on_connect:
     - lambda: |-
         // Publish battery status on connect
-        float voltage = id(battery_voltage).state;
-        float percentage = id(battery_percentage).state;
-        
-        std::string topic = "mykomonitor/myko-monitor-ii-${device_name_suffix}/battery/status";
-        std::string payload = "{\"voltage\":" + to_string(voltage) + 
-                             ",\"percentage\":" + to_string(percentage) + "}";
-        
-        id(mqtt_client).publish(topic, payload);
+        ESP_LOGI("battery", "Battery status: %.2fV (%.0f%%)",
+                 id(battery_voltage).state, id(battery_percentage).state);
+        // Note: Direct MQTT publish requires mqtt::global_mqtt_client->publish()
+        // or use mqtt.publish action instead of id(mqtt_client).publish()
 
 # Button for battery calibration
 button:

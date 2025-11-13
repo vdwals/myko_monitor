@@ -1,0 +1,68 @@
+# ESPHome Base Configuration for ESP8266 Devices
+# This file serves as a base template for ESP8266-based Myko Monitor devices
+# It includes the remote package from GitHub and provides all necessary substitutions
+#
+# Usage:
+#   1. Create a device-specific YAML file (e.g., myko-monitor-ii1.yaml)
+#   2. Include this file as a package
+#   3. Override device_name_suffix and standard_ip for each device
+#
+# Example device-specific file:
+#   substitutions:
+#     device_name_suffix: "1"
+#     standard_ip: 192.168.1.210
+#
+#   packages:
+#     device_base: !include myko-monitor-ii.esp8266.yaml
+
+# Substitutions - customize these values for your setup
+substitutions:
+  # WiFi Configuration
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_password
+  wifi_power: "20.5db"           # WiFi transmit power (lower = less power consumption)
+  gateway_ip: 192.168.1.1         # Your network gateway
+
+  # MQTT Configuration
+  mqtt_host: 192.168.1.200        # MQTT broker IP address
+  mqtt_username: mykomonitor      # MQTT username
+  mqtt_password: !secret mqtt_password
+
+  # Hardware Pin Configuration (ESP8266)
+  status_led_pin: GPIO12          # Status LED pin
+  mh_z16_rx: GPIO3                # MH-Z16 UART RX pin
+  mh_z16_tx: GPIO1                # MH-Z16 UART TX pin
+  sda_pin: GPIO4                  # I2C SDA pin for SHT35
+  scl_pin: GPIO5                  # I2C SCL pin for SHT35
+  sht_35_address: "0x44"          # SHT35 I2C address (0x44 or 0x45)
+
+  # Power Management
+  sleep_time: 5min                # Deep sleep duration (set to "0" to disable)
+
+  # Sensor Configuration
+  update_interval: 30s            # Sensor reading interval
+
+  # Device Identification
+  device_name_suffix: "esp8266"   # Override this in device-specific files
+
+  # Logging Configuration
+  log_baudrate: "0"               # Set to "115200" for serial logging, "0" to disable
+  log_level: "INFO"               # Logging level: DEBUG, INFO, WARN, ERROR
+
+# Remote Package Configuration
+# This includes the base configuration from GitHub
+packages:
+  remote_package_files:
+    url: https://github.com/vdwals/myko_monitor
+    files: [base.yml]
+    ref: main                     # Branch name (change to your branch if needed)
+    refresh: 0d                   # Cache duration (0d = always fetch latest)
+
+# ESP8266 Platform Configuration
+esp8266:
+  board: esp01_1m                 # ESP8266 board type (1MB flash)
+
+# OTA (Over-The-Air) Update Configuration
+ota:
+  - platform: esphome
+    password: !secret ota_password

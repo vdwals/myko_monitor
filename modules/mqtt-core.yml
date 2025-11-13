@@ -1,0 +1,18 @@
+# MQTT Core Configuration for Data Transmission
+# Handles sensor data publishing and Home Assistant integration
+# This is the base MQTT configuration without deep sleep commands
+
+mqtt:
+  broker: ${mqtt_host}        # MQTT broker address from substitutions
+  username: ${mqtt_username}  # MQTT authentication username
+  password: ${mqtt_password}  # MQTT authentication password
+
+  # Device lifecycle messages
+  birth_message:  # Message sent when device comes online
+  will_message:   # Message sent when device goes offline unexpectedly
+
+  # Topic structure for organized data publishing
+  topic_prefix: mykomonitor/myko-monitor-ii-${device_name_suffix}
+
+  # Use MAC address for unique device identification in Home Assistant
+  discovery_unique_id_generator: mac

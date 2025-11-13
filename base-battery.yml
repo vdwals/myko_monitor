@@ -1,0 +1,40 @@
+# ESPHome Base Configuration for Battery-Powered Devices
+# This configuration is optimized for battery-powered deployments
+# Features: Battery monitoring, sleep coordination, minimal power consumption
+#
+# Usage:
+#   substitutions:
+#     device_name_suffix: "outdoor-01"
+#     sleep_time: "30min"  # Deep sleep interval for battery saving
+#     battery_pin: "A0"    # ADC pin for battery voltage monitoring
+#
+#   packages:
+#     base: !include base-battery.yml
+#
+#   esp8266:
+#     board: esp01_1m
+#
+# IMPORTANT: Requires Home Assistant automation for sleep coordination!
+# See home_assistant_automations.yaml for required automations.
+
+# Include core configuration (sensors, wifi, mqtt, logger)
+packages:
+  core: !include base-core.yml
+
+  # Power management - deep sleep enabled by default for battery operation
+  # Configure sleep_time substitution (e.g., "15min", "30min", "60min")
+  deep_sleep: !include modules/deep_sleep_optional.yml
+
+  # MQTT sleep commands for remote power management
+  mqtt_sleep: !include modules/mqtt-sleep.yml
+
+  # OPTION B: Battery-Optimized Monitoring (Battery-Powered, WITH Battery)
+  # Minimal monitoring with battery management and sleep coordination
+  battery_optimized: !include modules/battery_optimized_monitoring.yml
+  sleep_coordinator: !include modules/sleep_coordinator.yml
+
+# Required substitutions (define in device-specific config):
+# - battery_pin: ADC pin for battery voltage (e.g., "A0")
+# - battery_low_voltage: Low battery threshold (e.g., "3.4")
+# - battery_critical_voltage: Critical battery threshold (e.g., "3.3")
+# - sleep_time: Deep sleep duration (e.g., "30min")

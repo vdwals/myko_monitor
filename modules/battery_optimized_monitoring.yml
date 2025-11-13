@@ -1,0 +1,166 @@
+# Battery-Optimized Monitoring for Home Assistant Sleep Control
+# Designed to work with HA-triggered deep sleep after sensor readings
+# Minimizes wake time while providing essential diagnostics
+
+# Global variables - lightweight tracking only
+globals:
+  # Essential counters only
+  - id: boot_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: sensor_failure_count
+    type: int
+    restore_value: true
+    initial_value: '0'
+  
+  - id: low_battery_flag
+    type: bool
+    restore_value: true
+    initial_value: 'false'
+
+# Minimal sensor monitoring - only critical metrics
+sensor:
+  # Battery voltage (Mark II only) - quick reading
+  - platform: adc
+    pin: A0
+    name: "Battery Voltage"
+    id: battery_voltage
+    update_interval: never  # Only read on-demand
+    accuracy_decimals: 2
+    filters:
+      - multiply: 2.0  # Voltage divider compensation
+    on_value:
+      - lambda: |-
+          // Quick battery check - set flag if low
+          if (x < 3.4) {
+            id(low_battery_flag) = true;
+            ESP_LOGW("battery", "Low battery: %.2fV", x);
+          } else {
+            id(low_battery_flag) = false;
+          }
+  
+  # System health score - calculated once per wake cycle
+  - platform: template
+    name: "System Health"
+    id: system_health
+    unit_of_measurement: "%"
+    update_interval: never  # Only update when requested
+    lambda: |-
+      float health = 100.0;
+      
+      // Reduce for sensor failures
+      if (id(sensor_failure_count) > 0) health -= 20.0;
+      
+      // Reduce for low battery
+      if (id(low_battery_flag)) health -= 15.0;
+      
+      // Reduce for WiFi issues
+      if (!wifi::global_wifi_component->is_connected()) health -= 25.0;
+
+      return max(0.0f, health);
+
+  # CO2 sensor with quick validation
+  - platform: template
+    name: "CO2 Status"
+    id: co2_status
+    update_interval: never
+    lambda: |-
+      if (!id(co2sensor).has_state()) {
+        id(sensor_failure_count) += 1;
+        return 0;  // Failed
+      }
+
+      float co2 = id(co2sensor).state;
+      if (co2 < 300 || co2 > 6000) {
+        id(sensor_failure_count) += 1;
+        return 0;  // Out of range
+      }
+
+      // Reset failure count on successful reading
+      if (id(sensor_failure_count) > 0) {
+        id(sensor_failure_count) = max(0, id(sensor_failure_count) - 1);
+      }
+
+      return 1;  // Success
+
+# Binary sensors for critical alerts only
+binary_sensor:
+  # Low battery alert
+  - platform: template
+    name: "Low Battery"
+    id: low_battery_alert
+    device_class: "problem"
+    lambda: |-
+      return id(low_battery_flag);
+  
+  # Sensor failure alert
+  - platform: template
+    name: "Sensor Failed"
+    id: sensor_failed_alert
+    device_class: "problem"
+    lambda: |-
+      return id(sensor_failure_count) >= 3;
+
+# Health check interval for battery mode
+# Checks system health periodically (aligned with sensor updates)
+interval:
+  - interval: ${update_interval}
+    then:
+      - lambda: |-
+          // Quick health assessment after sensor readings
+          ESP_LOGI("health", "Post-sensor health check");
+
+          // Update battery voltage if available
+          if (id(battery_voltage).has_state()) {
+            id(battery_voltage).update();
+          }
+
+          // Update system health
+          id(system_health).update();
+
+          // Log critical status
+          if (id(low_battery_flag)) {
+            ESP_LOGW("health", "Low battery detected");
+          }
+
+          if (id(sensor_failure_count) > 0) {
+            ESP_LOGW("health", "Sensor failures: %d", id(sensor_failure_count));
+          }
+
+          ESP_LOGI("health", "Health check complete - ready for sleep");
+
+# Lightweight MQTT status for Home Assistant
+mqtt:
+  on_connect:
+    - lambda: |-
+        // Send minimal status update on connect
+        ESP_LOGI("status", "System health: %.0f%%, Battery low: %s, Boot #%d",
+                 id(system_health).state,
+                 id(low_battery_flag) ? "true" : "false",
+                 id(boot_count));
+
+# Boot initialization - increment counter
+esphome:
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(boot_count) += 1;
+          ESP_LOGI("boot", "Boot #%d - battery optimized mode", id(boot_count));
+
+# Button for manual health check (diagnostic only)
+button:
+  - platform: template
+    name: "Quick Health Check"
+    entity_category: "diagnostic"
+    on_press:
+      - lambda: |-
+          // Manual health assessment
+          id(battery_voltage).update();
+          id(system_health).update();
+          
+          ESP_LOGI("manual", "Health: %.0f%%, Battery: %.2fV", 
+                   id(system_health).state, 
+                   id(battery_voltage).state);

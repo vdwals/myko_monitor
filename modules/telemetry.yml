@@ -315,14 +315,15 @@ interval:
           ESP_LOGI("telemetry", "Success Rate: %.1f%%", id(transmission_success_rate).state);
 
 # Boot initialization
-on_boot:
-  priority: -100  # Run after other components
-  then:
-    - lambda: |-
-        id(boot_count) += 1;
-        id(last_boot_time) = millis() / 1000;
-        ESP_LOGI("telemetry", "Boot #%d completed", id(boot_count));
-        ESP_LOGI("telemetry", "Reset reason: %s", ESP.getResetReason().c_str());
+esphome:
+  on_boot:
+    priority: -100  # Run after other components
+    then:
+      - lambda: |-
+          id(boot_count) += 1;
+          id(last_boot_time) = millis() / 1000;
+          ESP_LOGI("telemetry", "Boot #%d completed", id(boot_count));
+          ESP_LOGI("telemetry", "Reset reason: %s", ESP.getResetReason().c_str());
 
 # Event handlers for connection tracking
 wifi:
@@ -336,13 +337,6 @@ mqtt:
     - lambda: |-
         id(mqtt_connect_count) += 1;
         ESP_LOGI("telemetry", "MQTT connection #%d established", id(mqtt_connect_count));
-
-# Deep sleep tracking
-deep_sleep:
-  on_shutdown:
-    - lambda: |-
-        id(deep_sleep_cycles) += 1;
-        ESP_LOGI("telemetry", "Entering deep sleep cycle #%d", id(deep_sleep_cycles));
 
 # Text sensors for additional system information
 text_sensor:

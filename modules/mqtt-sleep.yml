@@ -1,0 +1,11 @@
+# MQTT Sleep Commands for Battery-Powered Devices
+# Adds deep sleep command handling to MQTT configuration
+# Only include this module for battery-powered devices with deep sleep enabled
+
+mqtt:
+  # Remote command handling for sleep control
+  on_message:
+    # Sleep command for remote power management
+    - topic: mykomonitor/myko-monitor-ii-${device_name_suffix}/command/sleep
+      then:
+        - deep_sleep.enter: deep_sleep_1  # Trigger deep sleep mode

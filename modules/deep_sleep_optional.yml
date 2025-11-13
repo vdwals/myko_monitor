@@ -1,0 +1,44 @@
+# Optional Deep Sleep Configuration
+# This module provides deep sleep functionality that can be disabled by setting sleep_time to "0"
+#
+# Usage:
+#   substitutions:
+#     sleep_time: "30min"  # Enable deep sleep with 30 minute intervals
+#     # OR
+#     sleep_time: "0"      # Disable deep sleep (device stays awake)
+
+# Global variable to track if deep sleep should be prevented
+globals:
+  - id: prevent_deep_sleep
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+# Deep sleep component configuration
+# Note: If sleep_time is set to "0", the on_boot script will prevent deep sleep
+deep_sleep:
+  sleep_duration: ${sleep_time}
+  id: deep_sleep_1
+
+# Script to check and prevent deep sleep if sleep_time is "0"
+script:
+  - id: check_sleep_mode
+    then:
+      # Check if sleep_time substitution equals "0"
+      # If so, prevent deep sleep permanently
+      - lambda: |-
+          std::string sleep_time = "${sleep_time}";
+          if (sleep_time == "0" || sleep_time == "0s" || sleep_time == "0min") {
+            ESP_LOGI("deep_sleep", "Sleep time is 0 - preventing deep sleep mode");
+            id(prevent_deep_sleep) = true;
+            id(deep_sleep_1).prevent();
+          } else {
+            ESP_LOGI("deep_sleep", "Deep sleep enabled with duration: %s", sleep_time.c_str());
+          }
+
+# Execute sleep mode check on boot
+esphome:
+  on_boot:
+    priority: -100  # Run late in boot sequence
+    then:
+      - script.execute: check_sleep_mode

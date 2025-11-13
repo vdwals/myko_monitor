@@ -162,6 +162,53 @@ sensor:
       }
       return 0;
 
+  # CO2 sensor with validation
+  - platform: template
+    name: "CO2 Validated"
+    id: co2_validated
+    unit_of_measurement: "ppm"
+    device_class: "carbon_dioxide"
+    state_class: "measurement"
+    accuracy_decimals: 0
+    lambda: |-
+      // Get raw CO2 reading from main sensor
+      if (!id(co2sensor).has_state()) return {};
+
+      float co2_value = id(co2sensor).state;
+
+      // Validate CO2 reading range (outdoor: 400-450, indoor: 450-5000)
+      if (co2_value < 350 || co2_value > 6000) {
+        id(co2_out_of_range_count) += 1;
+        ESP_LOGW("validation", "CO2 reading out of range: %.0f ppm", co2_value);
+        return {};  // Return invalid state
+      } else {
+        id(co2_out_of_range_count) = max(0, id(co2_out_of_range_count) - 1);
+      }
+
+      // Update variance calculation (simple running variance)
+      static float co2_readings[10] = {0};
+      static int reading_index = 0;
+      static bool buffer_full = false;
+
+      co2_readings[reading_index] = co2_value;
+      reading_index = (reading_index + 1) % 10;
+      if (reading_index == 0) buffer_full = true;
+
+      if (buffer_full) {
+        // Calculate variance
+        float mean = 0;
+        for (int i = 0; i < 10; i++) mean += co2_readings[i];
+        mean /= 10;
+
+        float variance = 0;
+        for (int i = 0; i < 10; i++) {
+          variance += pow(co2_readings[i] - mean, 2);
+        }
+        id(co2_reading_variance) = sqrt(variance / 10);
+      }
+
+      return co2_value;
+
 # Binary sensors for maintenance alerts
 binary_sensor:
   # CO2 sensor needs calibration
@@ -203,56 +250,6 @@ binary_sensor:
     entity_category: "diagnostic"
     lambda: |-
       return id(co2_reading_variance) > 100.0;  // High variance indicates instability
-
-# Enhanced sensor validation with diagnostics
-# This augments the existing sensor configurations
-sensor:
-  # CO2 sensor with validation (add to existing mh-z16.yml)
-  - platform: template
-    name: "CO2 Validated"
-    id: co2_validated
-    unit_of_measurement: "ppm"
-    device_class: "carbon_dioxide"
-    state_class: "measurement"
-    accuracy_decimals: 0
-    lambda: |-
-      // Get raw CO2 reading from main sensor
-      if (!id(co2sensor).has_state()) return {};
-      
-      float co2_value = id(co2sensor).state;
-      
-      // Validate CO2 reading range (outdoor: 400-450, indoor: 450-5000)
-      if (co2_value < 350 || co2_value > 6000) {
-        id(co2_out_of_range_count) += 1;
-        ESP_LOGW("validation", "CO2 reading out of range: %.0f ppm", co2_value);
-        return {};  // Return invalid state
-      } else {
-        id(co2_out_of_range_count) = max(0, id(co2_out_of_range_count) - 1);
-      }
-      
-      // Update variance calculation (simple running variance)
-      static float co2_readings[10] = {0};
-      static int reading_index = 0;
-      static bool buffer_full = false;
-      
-      co2_readings[reading_index] = co2_value;
-      reading_index = (reading_index + 1) % 10;
-      if (reading_index == 0) buffer_full = true;
-      
-      if (buffer_full) {
-        // Calculate variance
-        float mean = 0;
-        for (int i = 0; i < 10; i++) mean += co2_readings[i];
-        mean /= 10;
-        
-        float variance = 0;
-        for (int i = 0; i < 10; i++) {
-          variance += pow(co2_readings[i] - mean, 2);
-        }
-        id(co2_reading_variance) = sqrt(variance / 10);
-      }
-      
-      return co2_value;
 
 # Interval tasks for maintenance tracking
 interval:

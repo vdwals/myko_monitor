@@ -1,0 +1,58 @@
+# Example Configuration for Mains-Powered Myko Monitor
+# This configuration is for devices powered by USB/mains power (no battery)
+#
+# Features:
+#   - Full monitoring (telemetry, diagnostics, error handling)
+#   - No battery monitoring
+#   - Deep sleep disabled by default (always-on operation)
+#
+# Usage:
+#   1. Copy this file to your device-specific name (e.g., myko-monitor-greenhouse.yaml)
+#   2. Adjust the substitutions below for your device
+#   3. Compile: esphome compile myko-monitor-greenhouse.yaml
+#   4. Upload: esphome upload myko-monitor-greenhouse.yaml
+
+# Device-specific substitutions
+substitutions:
+  # WiFi Configuration
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_password
+  wifi_power: "20.5db"           # WiFi transmit power
+  gateway_ip: 192.168.1.1         # Your network gateway
+
+  # MQTT Configuration
+  mqtt_host: 192.168.1.200        # MQTT broker IP address
+  mqtt_username: mykomonitor      # MQTT username
+  mqtt_password: !secret mqtt_password
+
+  # Hardware Pin Configuration (ESP8266)
+  status_led_pin: GPIO2           # Status LED pin
+  mh_z16_rx: GPIO13               # MH-Z16 UART RX pin
+  mh_z16_tx: GPIO15               # MH-Z16 UART TX pin
+  sht_35_address: "0x44"          # SHT35 I2C address (0x44 or 0x45)
+
+  # Power Management
+  sleep_time: "0"                 # Disabled for mains power (set to "30min" to enable)
+
+  # Sensor Configuration
+  update_interval: 60s            # Sensor reading interval
+
+  # Device Identification
+  device_name_suffix: "greenhouse" # Change this for each device
+  standard_ip: 192.168.1.210      # Static IP for this device
+
+  # Logging Configuration
+  log_level: "INFO"               # Logging level: DEBUG, INFO, WARN, ERROR
+
+# Include base configuration for mains-powered devices
+packages:
+  base: !include ../base-mains.yml
+
+# ESP8266 Platform Configuration
+esp8266:
+  board: esp01_1m                 # ESP8266 board type (1MB flash)
+
+# OTA (Over-The-Air) Update Configuration
+ota:
+  - platform: esphome
+    password: !secret ota_password

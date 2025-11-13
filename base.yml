@@ -1,53 +1,13 @@
-# ESPHome Base Configuration Template
-# This file serves as the main template for Myko Monitor devices
-# Uses substitutions for device-specific customization
+# ESPHome Base Configuration - DEPRECATED
+#
+# IMPORTANT: This file is deprecated in favor of specific base configurations:
+#
+#   - base-mains.yml    : For mains-powered devices (NO battery monitoring)
+#   - base-battery.yml  : For battery-powered devices (WITH battery monitoring)
+#
+# Please use one of the specific configurations above instead of this file.
+# This file now defaults to base-mains.yml for backward compatibility.
 
-esphome:
-  # Device naming using substitution variables
-  # ${device_name_suffix} should be defined in device-specific configs
-  name: myko-monitor-ii-${device_name_suffix}
-  friendly_name: Myko Monitor II.${device_name_suffix}
-  
-  # Project metadata for ESPHome dashboard and updates
-  project:
-    name: "vdwals.mykomonitor"
-    version: "2.4.0"
-  
-  # Disable MAC suffix to use predictable device names
-  name_add_mac_suffix: False
-
-# Modular package system - includes external YAML files
-# Each package provides specific functionality that can be reused
+# For backward compatibility, include base-mains.yml
 packages:
-  # Power management - handles deep sleep for battery operation
-  deep_sleep: !include deep_sleep.yml
-  
-  # CO2 sensor configuration - MH-Z16/MH-Z19 via UART
-  mh_z16: !include mh-z16.yml
-  
-  # Temperature/humidity sensor - SHT35 via I2C
-  sht35: !include sht35.yml
-  
-  # Status LED indicators for device state
-  status_led: !include status_led.yml
-  
-  # WiFi connectivity with power optimization
-  wifi: !include wifi.yml
-  
-  # MQTT messaging for data transmission and remote control
-  mqtt: !include mqtt.yml
-  
-  # Logging configuration with power-aware settings
-  logger: !include logger.yml
-  
-  # Enhanced monitoring and diagnostics (choose one option):
-  
-  # Option A: Full monitoring (for mains-powered or development)
-  # error_handling: !include error_handling.yml
-  # telemetry: !include telemetry.yml
-  # sensor_diagnostics: !include sensor_diagnostics.yml
-  # battery_monitoring: !include battery_monitoring.yml
-  
-  # Option B: Battery-optimized monitoring (for HA sleep control)
-  battery_optimized: !include battery_optimized_monitoring.yml
-  sleep_coordinator: !include sleep_coordinator.yml
+  base_mains: !include base-mains.yml

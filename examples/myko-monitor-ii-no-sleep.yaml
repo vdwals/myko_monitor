@@ -1,0 +1,23 @@
+# Device Configuration with Deep Sleep Disabled
+# This example shows how to configure a device for mains power operation
+# without deep sleep functionality
+#
+# Usage:
+#   esphome compile myko-monitor-ii-no-sleep.yaml
+#   esphome upload myko-monitor-ii-no-sleep.yaml
+
+# Device-specific substitutions
+substitutions:
+  device_name_suffix: "office"    # Unique device identifier
+  standard_ip: 192.168.1.220      # Static IP address for this device
+  sleep_time: "0"                 # Disable deep sleep by setting to "0"
+
+# Include the ESP8266 base configuration
+packages:
+  device_base: !include myko-monitor-ii.esp8266.yml
+
+# Note: With sleep_time set to "0", the device will:
+# - Stay awake permanently (suitable for USB/mains power)
+# - Provide continuous monitoring
+# - Allow instant OTA updates
+# - Enable real-time logging and debugging

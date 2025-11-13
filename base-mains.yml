@@ -1,0 +1,29 @@
+# ESPHome Base Configuration for Mains-Powered Devices
+# This configuration is for devices powered by USB/mains power
+# Features: Full monitoring, no battery management, optional deep sleep
+#
+# Usage:
+#   substitutions:
+#     device_name_suffix: "greenhouse"
+#     sleep_time: "0"  # Disable deep sleep for mains-powered devices
+#
+#   packages:
+#     base: !include base-mains.yml
+#
+#   esp8266:
+#     board: esp01_1m
+
+# Include core configuration (sensors, wifi, mqtt, logger)
+packages:
+  core: !include base-core.yml
+
+  # OPTION A: Full Monitoring (Mains-Powered, NO Battery)
+  # Comprehensive telemetry and diagnostics for always-on devices
+  error_handling: !include modules/error_handling.yml
+  telemetry: !include modules/telemetry.yml
+  sensor_diagnostics: !include modules/sensor_diagnostics.yml
+  # Note: battery_monitoring is NOT included for mains-powered devices
+
+  # Power management - deep sleep (optional for mains power)
+  # Uncomment the line below to enable deep sleep for mains-powered devices
+  # deep_sleep: !include modules/deep_sleep_optional.yml

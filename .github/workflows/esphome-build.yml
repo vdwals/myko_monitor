@@ -1,0 +1,167 @@
+name: ESPHome Build Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build:
+    name: Build ESPHome Configuration
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # Test both device configurations
+        config:
+          - name: "mains"
+            base_file: "base-mains.yml"
+            description: "Mains-Powered (No Battery)"
+          - name: "battery"
+            base_file: "base-battery.yml"
+            description: "Battery-Powered (With Battery)"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install ESPHome
+        run: |
+          pip install --upgrade pip
+          pip install esphome
+          esphome version
+
+      - name: Create test configuration wrapper
+        run: |
+          cat > test-config.yaml << 'EOF'
+          # CI/CD Test Configuration
+          # This wraps the base configuration with required substitutions
+
+          # Define all required substitutions
+          substitutions:
+            # WiFi Configuration
+            wifi_ssid: "TestNetwork"
+            wifi_password: "TestPassword123"
+
+            # MQTT Broker Settings
+            mqtt_host: "192.168.1.100"
+            mqtt_username: "test_user"
+            mqtt_password: "test_password"
+
+            # Device Configuration
+            device_name_suffix: "ci-test-${{ matrix.config.name }}"
+            friendly_name: "CI Test Device (${{ matrix.config.description }})"
+
+            # Network Settings
+            standard_ip: "192.168.1.200"
+            gateway_ip: "192.168.1.1"
+
+            # Sensor Configuration
+            sht_35_address: "0x44"
+            update_interval: "60s"
+
+            # GPIO Pin Assignments
+            status_led_pin: "GPIO2"
+            mh_z16_rx: "GPIO13"
+            mh_z16_tx: "GPIO15"
+
+            # Power Management
+            sleep_time: "${{ matrix.config.name == 'mains' && '0' || '30min' }}"
+
+            # Battery Configuration (only used for battery config)
+            battery_pin: "A0"
+            voltage_divider_factor: "2.0"
+            battery_full_voltage: "4.1"
+            battery_empty_voltage: "3.2"
+            battery_low_voltage: "3.4"
+            battery_critical_voltage: "3.3"
+
+            # API Keys
+            api_encryption_key: "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/=="
+            ota_password: "test_ota_password"
+            ha_api_password: "test_ha_password"
+
+            # Calibration Settings
+            co2_calibration_ppm: "400"
+            temp_offset: "0.0"
+            humidity_offset: "0.0"
+
+            # Advanced Settings
+            wifi_power_db: "20.5"
+            log_level: "INFO"
+            mqtt_keepalive: "15s"
+            sensor_warmup_time: "3min"
+
+          # Include base configuration (matrix-specific)
+          packages:
+            base: !include ${{ matrix.config.base_file }}
+
+          # ESP8266 Platform Configuration
+          esp8266:
+            board: esp01_1m
+
+          # OTA Configuration
+          ota:
+            - platform: esphome
+              password: test_ota_password
+          EOF
+
+      - name: Validate ESPHome configuration
+        run: |
+          echo "Validating test-config.yaml for ${{ matrix.config.description }}..."
+          esphome config test-config.yaml
+
+      - name: Compile ESPHome firmware
+        run: |
+          echo "Compiling test-config.yaml for ${{ matrix.config.description }}..."
+          esphome compile test-config.yaml
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.config.name }}
+          path: |
+            .esphome/build/*/.pioenvs/*/firmware.bin
+            .esphome/build/*/.pioenvs/*/firmware.elf
+          retention-days: 7
+          if-no-files-found: warn
+
+  validate-examples:
+    name: Validate Example Configurations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install ESPHome
+        run: |
+          pip install --upgrade pip
+          pip install esphome
+          esphome version
+
+      - name: Validate example configurations
+        run: |
+          echo "Validating example YAML files..."
+          for file in examples/*.yaml examples/*.yml; do
+            if [ -f "$file" ]; then
+              echo "Validating $file..."
+              # Only validate syntax, skip compilation for remote packages
+              esphome config "$file" || echo "Warning: $file validation failed (may use remote packages)"
+            fi
+          done

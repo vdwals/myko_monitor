@@ -1,0 +1,71 @@
+# Example Configuration for Battery-Powered Myko Monitor
+# This configuration is optimized for battery-powered outdoor deployments
+#
+# Features:
+#   - Battery monitoring and management
+#   - Deep sleep for power saving
+#   - Sleep coordination with Home Assistant
+#   - Minimal power consumption
+#
+# IMPORTANT: Requires Home Assistant automation for sleep coordination!
+# See home_assistant_automations.yaml for required automations.
+#
+# Usage:
+#   1. Copy this file to your device-specific name (e.g., myko-monitor-outdoor-01.yaml)
+#   2. Adjust the substitutions below for your device
+#   3. Set up Home Assistant automations (see home_assistant_automations.yaml)
+#   4. Compile: esphome compile myko-monitor-outdoor-01.yaml
+#   5. Upload: esphome upload myko-monitor-outdoor-01.yaml
+
+# Device-specific substitutions
+substitutions:
+  # WiFi Configuration
+  wifi_ssid: !secret wifi_ssid
+  wifi_password: !secret wifi_password
+  wifi_power: "17db"              # Lower power for battery saving (default: 20.5db)
+  gateway_ip: 192.168.1.1         # Your network gateway
+
+  # MQTT Configuration
+  mqtt_host: 192.168.1.200        # MQTT broker IP address
+  mqtt_username: mykomonitor      # MQTT username
+  mqtt_password: !secret mqtt_password
+
+  # Hardware Pin Configuration (ESP8266)
+  status_led_pin: GPIO2           # Status LED pin
+  mh_z16_rx: GPIO13               # MH-Z16 UART RX pin
+  mh_z16_tx: GPIO15               # MH-Z16 UART TX pin
+  sht_35_address: "0x44"          # SHT35 I2C address (0x44 or 0x45)
+
+  # Battery Configuration
+  battery_pin: "A0"               # ADC pin for battery voltage monitoring
+  voltage_divider_factor: "2.0"  # Voltage divider ratio (2:1)
+  battery_full_voltage: "4.1"    # Fully charged voltage (Li-ion)
+  battery_empty_voltage: "3.2"   # Empty voltage (protect from over-discharge)
+  battery_low_voltage: "3.4"     # Low battery warning threshold
+  battery_critical_voltage: "3.3" # Critical battery shutdown threshold
+
+  # Power Management
+  sleep_time: "30min"             # Deep sleep duration (15min, 30min, 45min, 60min)
+
+  # Sensor Configuration
+  update_interval: 60s            # Sensor reading interval
+
+  # Device Identification
+  device_name_suffix: "outdoor-01" # Change this for each device
+  standard_ip: 192.168.1.211      # Static IP for this device
+
+  # Logging Configuration
+  log_level: "INFO"               # Logging level: DEBUG, INFO, WARN, ERROR
+
+# Include base configuration for battery-powered devices
+packages:
+  base: !include ../base-battery.yml
+
+# ESP8266 Platform Configuration
+esp8266:
+  board: esp01_1m                 # ESP8266 board type (1MB flash)
+
+# OTA (Over-The-Air) Update Configuration
+ota:
+  - platform: esphome
+    password: !secret ota_password

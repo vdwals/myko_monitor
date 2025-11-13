@@ -1,12 +1,12 @@
 # ESPHome Secrets and Build Files
 secrets.yaml
+test-config.yaml
 .esphome/
 *.bin
 *.elf
 
 # Development Files
 .vscode/settings.json
-.devcontainer
 *.log
 *.tmp
 

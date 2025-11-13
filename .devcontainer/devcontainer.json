@@ -1,0 +1,85 @@
+{
+	"name": "ESPHome Development Environment",
+	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"configureZshAsDefaultShell": true,
+			"installOhMyZsh": true,
+			"upgradePackages": true
+		},
+		"ghcr.io/devcontainers/features/git:1": {
+			"version": "latest"
+		}
+	},
+
+	"postCreateCommand": "pip3 install --upgrade pip && pip3 install esphome && npm install -g @anthropic-ai/claude-code",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				// ESPHome and YAML support
+				"ESPHome.esphome-vscode",
+				"redhat.vscode-yaml",
+
+				// Python support
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+
+				// General productivity
+				"esbenp.prettier-vscode",
+				"editorconfig.editorconfig",
+				"eamodio.gitlens",
+
+				// Documentation
+				"yzhang.markdown-all-in-one",
+				"davidanson.vscode-markdownlint"
+			],
+			"settings": {
+				"files.associations": {
+					"*.yml": "yaml",
+					"*.yaml": "yaml"
+				},
+				"yaml.schemas": {
+					"https://esphome.io/schema/esphome.json": "*.yaml"
+				},
+				"yaml.customTags": [
+					"!secret scalar",
+					"!lambda scalar",
+					"!extend scalar",
+					"!remove scalar",
+					"!include scalar",
+					"!include_dir_list scalar",
+					"!include_dir_merge_list scalar",
+					"!include_dir_merge_named scalar",
+					"!include_dir_named scalar"
+				],
+				"yaml.format.enable": true,
+				"yaml.validate": true,
+				"editor.formatOnSave": true,
+				"[yaml]": {
+					"editor.defaultFormatter": "redhat.vscode-yaml",
+					"editor.tabSize": 2,
+					"editor.insertSpaces": true
+				},
+				"python.defaultInterpreterPath": "/usr/local/bin/python",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": false,
+				"python.formatting.provider": "black"
+			}
+		}
+	},
+
+	"remoteUser": "root",
+
+	"forwardPorts": [6052],
+	"portsAttributes": {
+		"6052": {
+			"label": "ESPHome Dashboard",
+			"onAutoForward": "notify"
+		}
+	}
+}
